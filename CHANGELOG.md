@@ -3,6 +3,8 @@
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
 ## 2026-10-19
+- Licence MIT ajoutée (`LICENSE`), copyright attribué à la HES-SO ; titularité des droits à confirmer par l'enseignant.
+- Dépôt publié sur la forge HEFR (privé).
 - Test de `think: false` pour la passe de recopie d'Open WebUI : retenu par défaut (`scripts/webui-bootstrap.sh`). Génération de la passe de recopie : 24,7 s → 7,9 s d'après les logs Ollama (comparaison indicative). Guide, section 4.11.
 - `webui_timeout_seconds` (1800 s) : le téléchargement de l'image d'Open WebUI a dépassé l'ancien délai de 600 s (12 min 44 s mesurés).
 - Test de fumée : le contrôle des pods réessaie pendant 5 min (faux échec juste après le déploiement).

@@ -163,4 +163,4 @@ docs/                     guide (DOCX), sources du guide (guide-src/), document 
 
 ## Licence
 
-À définir par le groupe.
+Licence MIT (fichier `LICENSE`). Le copyright est attribué à la HES-SO, qui détient les droits sur les travaux réalisés dans le cadre de la formation. Cette attribution est une hypothèse du groupe, à faire confirmer par l'enseignant.
