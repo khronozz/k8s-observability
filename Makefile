@@ -35,7 +35,7 @@ check-charts:
 	@echo "--- otwld/ollama 1.88.0 : crochet postStart rendu avec le modèle"
 	helm template ollama otwld/ollama --version 1.88.0 --set 'ollama.models.pull[0]=qwen3:8b' | grep -n -B2 -A14 "postStart"
 	@echo "--- open-webui 17.0.0 : clés utilisées"
-	helm show values open-webui/open-webui --version 17.0.0 | grep -n -E "^ollamaUrls:|^extraEnvVars:|^enableOpenaiApi:|^websocket:" 
+	helm show values open-webui/open-webui --version 17.0.0 | grep -n -E "^ollamaUrls:|^extraEnvVars:|^enableOpenaiApi:|^websocket:"
 
 # --- LOCAL (Kind) ---------------------------------------------------------------------------
 local-secrets:
@@ -120,6 +120,7 @@ docs:
 # À lancer avant chaque commit. Échoue si un fichier sensible est suivi par git ou si une valeur de secret semble écrite en clair.
 # Recherche par motifs : elle ne remplace pas une relecture de `git diff --staged`.
 check-secrets:
+	@git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "ÉCHEC : ce dossier n'est pas un dépôt git (git init d'abord) : rien n'a été contrôlé."; exit 1; }
 	@bad="$$(git ls-files | grep -E '(\.auto\.tfvars|(^|/)terraform\.tfvars$$|\.tfstate|kubeconfig|\.pem$$|\.key$$|(^|/)\.env)' || true)"; \
 	if [ -n "$$bad" ]; then echo "ÉCHEC : fichiers sensibles suivis par git :"; echo "$$bad"; exit 1; fi
 	@hits="$$(git grep -niIE "(password|passwd|secret_key|access_key|api[_-]?key|token)[A-Za-z_]*[\"']?[ ]*[:=][ ]*[\"'][A-Za-z0-9+/_=-]{12,}[\"']" -- . ':!*.example' ':!docs/*.docx' | grep -v 'REPLACE_' || true)"; \
