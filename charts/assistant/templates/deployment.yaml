@@ -1,0 +1,50 @@
+# Les noms (Deployment, Service) sont fixes : l'adresse assistant.assistant.svc.cluster.local est écrite
+# dans la configuration d'Open WebUI et ne doit pas dépendre du nom de la release Helm.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assistant
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assistant
+  template:
+    metadata:
+      labels:
+        app: assistant
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: assistant
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MIMIR_URL
+              value: {{ .Values.mimirUrl | quote }}
+            - name: LOKI_URL
+              value: {{ .Values.lokiUrl | quote }}
+            - name: OLLAMA_URL
+              value: {{ .Values.ollamaUrl | quote }}
+            - name: LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: LLM_REASONING
+              value: {{ .Values.llm.reasoning | quote }}
+            - name: LLM_NUM_CTX
+              value: {{ .Values.llm.numCtx | quote }}
+            - name: TRACE_RESULT_CHARS
+              value: {{ .Values.traceResultChars | quote }}
+            - name: TOOLS_PUBLIC_URL
+              value: {{ .Values.toolsPublicUrl | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

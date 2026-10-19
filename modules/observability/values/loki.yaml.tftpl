@@ -1,0 +1,79 @@
+# Loki (chart communautaire grafana-community/loki), mode Monolithic, stockage S3 (pas de MinIO :
+# le sous-chart MinIO est déprécié, retrait annoncé le 2026-10-31).
+# Structure reprise de l'exemple S3 de la doc officielle. Les noms de buckets ne doivent pas être
+# `chunk`, `ruler`, `admin` (avertissement de la doc pour S3).
+deploymentMode: Monolithic
+
+loki:
+  # Ajouté par nous (pas dans l'exemple de la doc) : pas d'en-tête X-Scope-OrgID à gérer pour ce test.
+  # À valider : si le chart refuse cette clé, retirer et configurer le tenant dans Alloy/Grafana.
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  pattern_ingester:
+    enabled: true
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+  storage:
+    type: s3
+    bucketNames:
+      chunks: ${bucket.loki_chunks}
+      ruler: ${bucket.loki_ruler}
+      admin: ${bucket.loki_admin}
+    s3:
+      endpoint: ${s3_endpoint}
+      region: ${s3_region}
+      accessKeyId: "${s3_access_key}"
+      secretAccessKey: "${s3_secret_key}"
+      s3ForcePathStyle: true
+      insecure: ${s3_insecure}
+
+minio:
+  enabled: false
+
+singleBinary:
+  replicas: 1
+
+# Caches memcached : le README du chart cite `chunksCache` / `resultsCache` (on les coupe en local).
+chunksCache:
+  enabled: ${caches_enabled}
+resultsCache:
+  enabled: ${caches_enabled}
+
+# Mettre à zéro les autres modes de déploiement (comme dans la doc).
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0

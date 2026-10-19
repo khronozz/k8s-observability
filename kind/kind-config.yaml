@@ -1,0 +1,10 @@
+# Cluster Kind local : 1 control-plane + 2 workers.
+# apiVersion confirmé par la doc Kind (kind.x-k8s.io/v1alpha4).
+# Aucun extraPortMapping : on accède aux services via `kubectl port-forward`.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: k8s-ai-monitoring
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker

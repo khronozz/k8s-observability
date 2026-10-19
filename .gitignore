@@ -1,0 +1,45 @@
+# --- Secrets et accès : NE JAMAIS COMMITER ---------------------------------------------------
+# Générés localement (make local-secrets / make local-garage-init / make switch-secrets).
+*.auto.tfvars
+*.auto.tfvars.json
+# Le modèle terraform.tfvars.example, lui, est versionné.
+terraform.tfvars
+.env
+.env.*
+*.kubeconfig
+kubeconfig*
+*.pem
+*.key
+
+# --- OpenTofu / Terraform ---------------------------------------------------------------------
+# L'état contient les secrets en clair. Le verrou .terraform.lock.hcl, lui, est versionné.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.terraform.lock.hcl.bak
+
+# --- Fichiers de travail générés ---------------------------------------------------------------
+# Clone du chart Garage (make garage-chart).
+.work/
+*.log
+*.zip
+*.tar.gz
+
+# --- Python (assistant/) -----------------------------------------------------------------------
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# --- Node (docs/guide-src) ---------------------------------------------------------------------
+node_modules/
+
+# --- Système et éditeurs -----------------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+~$*

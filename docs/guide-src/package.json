@@ -1,0 +1,7 @@
+{
+  "name": "guide-observabilite-k8s",
+  "private": true,
+  "description": "Génère docs/Projet5-Stack-Observabilite-Kubernetes.docx à partir de build_docx.js et decisions.js",
+  "scripts": { "build": "node build_docx.js" },
+  "dependencies": { "docx": "9.7.1" }
+}

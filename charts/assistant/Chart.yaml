@@ -1,0 +1,6 @@
+apiVersion: v2
+name: assistant
+description: Assistant de supervision Kubernetes en lecture seule (FastAPI + LangChain, modèle local via Ollama).
+type: application
+version: 0.4.3
+appVersion: "0.4.3"

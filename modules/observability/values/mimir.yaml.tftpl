@@ -1,0 +1,31 @@
+# Mimir (chart mimir-distributed) SANS MinIO.
+# Vérifié dans la doc : `minio.enabled: false` + bloc mimir.structuredConfig (common.storage, blocks_storage,
+# alertmanager_storage, ruler_storage), 3 buckets distincts.
+# NON listé dans la doc consultée : `insecure` et `bucket_lookup_type` (clés S3 de Mimir) -> à valider au premier démarrage.
+minio:
+  enabled: false
+
+# Le chart déploie par défaut l'architecture "ingest storage" avec un Kafka embarqué
+# (la doc précise que ce Kafka embarqué est destiné aux démos/tests). On le garde pour ce test.
+
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: ${s3_endpoint}
+          region: ${s3_region}
+          insecure: ${s3_insecure}
+          bucket_lookup_type: path
+          access_key_id: "${s3_access_key}"
+          secret_access_key: "${s3_secret_key}"
+    blocks_storage:
+      s3:
+        bucket_name: ${bucket.mimir_blocks}
+    alertmanager_storage:
+      s3:
+        bucket_name: ${bucket.mimir_alertmanager}
+    ruler_storage:
+      s3:
+        bucket_name: ${bucket.mimir_ruler}

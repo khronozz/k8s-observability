@@ -1,0 +1,31 @@
+# Open WebUI avec Ollama externe (Ollama est déployé à part, dans le namespace `ollama`).
+# Clés et défauts vérifiés dans le values.yaml du chart : ollama.enabled (true par défaut), pipelines.enabled (true),
+# websocket.enabled (true, redis), enableOpenaiApi (true), persistence, service.
+ollama:
+  enabled: false
+pipelines:
+  enabled: false
+# Une seule réplique. Selon le guide Kubernetes d'Open WebUI (13.10.2026) : websocket activé, sans gestionnaire
+# ni Redis (Redis n'est requis qu'avec plusieurs répliques).
+websocket:
+  enabled: true
+  manager: ""
+  redis:
+    enabled: false
+enableOpenaiApi: false
+# Liaison avec Ollama (service du namespace `ollama`, chart otwld/ollama 1.88.0). Clé `ollamaUrls` présente dans
+# le values.yaml du chart 17.0.0 (liste vide par défaut). Ajouté après le test d'appel d'outils de qwen3:8b.
+ollamaUrls:
+  - http://ollama.ollama.svc.cluster.local:11434
+
+persistence:
+  enabled: true
+  size: 2Gi
+
+service:
+  type: ClusterIP
+  port: 80
+
+extraEnvVars:
+  - name: WEBUI_SECRET_KEY
+    value: "REPLACE_WEBUI_SECRET"

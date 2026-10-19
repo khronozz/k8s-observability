@@ -1,0 +1,31 @@
+# Valeurs par défaut = celles du manifeste testé à la main sur Kind (manual/local/assistant.yaml).
+image:
+  # Local : image construite sur le poste puis chargée dans Kind (`kind load docker-image`), donc nom sans registre.
+  # Cloud : à remplacer par l'adresse complète dans un registre accessible depuis le cluster.
+  repository: assistant
+  tag: "0.4.3"
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Adresses des services du cluster (noms DNS vérifiés sur Kind le 15.10.2026).
+mimirUrl: "http://mimir-gateway.mimir.svc.cluster.local/prometheus"
+lokiUrl: "http://loki-gateway.loki.svc.cluster.local"
+ollamaUrl: "http://ollama.ollama.svc.cluster.local:11434"
+
+llm:
+  model: "qwen3:8b"
+  reasoning: "false"
+  numCtx: "8192"
+
+# Début du résultat de chaque outil recopié dans la réponse (0 = désactivé).
+traceResultChars: "600"
+
+# URL sous laquelle Open WebUI joint la sous-application d'outils (champ `servers` de la spécification OpenAPI).
+toolsPublicUrl: "http://assistant.assistant.svc.cluster.local:8000/tools"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi   # estimation, à vérifier avec `kubectl top pod -n assistant`

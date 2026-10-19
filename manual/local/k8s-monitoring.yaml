@@ -1,0 +1,41 @@
+# k8s-monitoring (Alloy Operator + collecteurs Alloy), chart v4.x.
+# Confirmés par la doc : destinations de type `prometheus` et `loki`, features clusterMetrics / clusterEvents,
+# `collectors.<nom>`, presets (clustered, statefulset, singleton, filesystem-log-reader, daemonset),
+# champ `collector` par feature, `telemetryServices.kube-state-metrics.deploy`.
+# CORRIGÉ après `helm template` (chart 4.5.3) : `destinations` est un OBJET (clé = nom), pas un tableau.
+# `podLogsViaLoki` est confirmé par le guide de migration v4 de Grafana.
+# NON confirmé en v4 : `clusterEvents` (absent de la liste du guide de migration) -> `helm template` tranchera.
+cluster:
+  name: kind-local
+
+destinations:
+  mimir:
+    type: prometheus
+    url: http://mimir-gateway.mimir.svc.cluster.local/api/v1/push
+  loki:
+    type: loki
+    url: http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push
+
+clusterMetrics:
+  enabled: true
+  collector: alloy-metrics
+
+clusterEvents:
+  enabled: true
+  collector: alloy-singleton
+
+podLogsViaLoki:
+  enabled: true
+  collector: alloy-logs
+
+collectors:
+  alloy-metrics:
+    presets: [clustered, statefulset]
+  alloy-singleton:
+    presets: [singleton]
+  alloy-logs:
+    presets: [filesystem-log-reader, daemonset]
+
+telemetryServices:
+  kube-state-metrics:
+    deploy: true

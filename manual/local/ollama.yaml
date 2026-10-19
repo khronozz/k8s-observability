@@ -1,0 +1,6 @@
+# Ollama (Step 3). Valeurs relevées sur le cluster Kind le 17.10.2026 avec `helm get values ollama -n ollama -o yaml`
+# (chart otwld/ollama 1.88.0, application 0.40.3, révision 1) : ce sont les SEULES valeurs fournies à l'installation.
+# Aucun modèle n'est défini ici : qwen3:8b a donc été téléchargé séparément (voir le guide, section 4.3).
+persistentVolume:
+  enabled: true
+  size: 30Gi   # les modèles sont conservés d'un redémarrage à l'autre ; qwen3:8b pèse 5,2 Go

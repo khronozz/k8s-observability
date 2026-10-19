@@ -1,0 +1,23 @@
+# Grafana : datasources provisionnées vers Mimir (Prometheus API sous /prometheus, confirmé par la doc Mimir) et Loki.
+adminUser: admin
+adminPassword: "REPLACE_GRAFANA_PASSWORD"
+
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        type: prometheus
+        access: proxy
+        url: http://mimir-gateway.mimir.svc.cluster.local/prometheus
+        isDefault: true
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.loki.svc.cluster.local

@@ -1,0 +1,48 @@
+# Service d'assistance (étape 3). Image construite localement puis chargée dans Kind (pas de registre).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: assistant
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assistant
+  namespace: assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: assistant}
+  template:
+    metadata:
+      labels: {app: assistant}
+    spec:
+      containers:
+        - name: assistant
+          image: assistant:0.4.3
+          imagePullPolicy: IfNotPresent   # image chargée avec `kind load docker-image`
+          ports:
+            - containerPort: 8000
+          env:
+            - {name: MIMIR_URL, value: "http://mimir-gateway.mimir.svc.cluster.local/prometheus"}
+            - {name: LOKI_URL,  value: "http://loki-gateway.loki.svc.cluster.local"}
+            - {name: OLLAMA_URL, value: "http://ollama.ollama.svc.cluster.local:11434"}
+            - {name: LLM_MODEL, value: "qwen3:8b"}
+            - {name: LLM_REASONING, value: "false"}
+            - {name: TRACE_RESULT_CHARS, value: "600"}   # début du résultat de chaque outil dans tool_calls ; 0 = désactivé (+~530 tokens au second passage d'Open WebUI)
+          readinessProbe:
+            httpGet: {path: /health, port: 8000}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}   # 256Mi suffisait sans LangChain ; 512Mi est une estimation, à vérifier avec kubectl top
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assistant
+  namespace: assistant
+spec:
+  selector: {app: assistant}
+  ports:
+    - port: 8000
+      targetPort: 8000

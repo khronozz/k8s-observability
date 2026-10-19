@@ -1,0 +1,18 @@
+# Copier en terraform.tfvars (fichier ignoré par git) et compléter. NE JAMAIS committer les secrets.
+# Les mots de passe Grafana / Open WebUI et la clé WEBUI_SECRET_KEY sont générés par `make switch-secrets`
+# dans secrets.auto.tfvars.json : ne pas les mettre ici.
+kubeconfig_path = "~/.kube/sck-switch.yaml"
+s3_endpoint     = "<hôte SCS3 sans https://>"
+s3_region       = "<région SCS3>"
+bucket_prefix   = "<prefixe-unique>-"
+s3_access_key   = "<access key>"
+s3_secret_key   = "<secret key>"
+
+webui_admin_email = "<e-mail de l'administrateur Open WebUI>"
+
+# Image de l'assistant poussée par `make switch-image REGISTRY=...` ; registre non choisi à ce jour.
+assistant_image_repository = "<registre>/<projet>/assistant"
+# assistant_image_pull_secrets = ["<secret-dockerconfigjson>"]   # si le registre est privé
+
+# Modèle et ressources du LLM : à adapter aux nœuds SCK (non vérifiés). Exemple (GPU, clés du chart otwld, non testé) :
+# ollama_extra_values = { ollama = { gpu = { enabled = true, type = "nvidia", number = 1 } } }
