@@ -2,6 +2,15 @@
 
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
+## 2026-10-22
+- Retour du professeur : Switch Cloud abandonné au profit d'AWS (`us-east-1`) ; LLM hébergé localement abandonné au profit d'un modèle public ; l'assistant sort du cluster surveillé. Mimir, Loki, Alloy et Grafana restent dans le cluster ; l'assistant et Open WebUI iront sur une instance EC2.
+- Compte AWS (lu avec le CLI) : utilisateur IAM du groupe `students` avec la politique `AdministratorAccess` ; `aws eks list-clusters` renvoie une liste vide.
+- LLM : Amazon Bedrock plutôt qu'une API publique. OpenAI exige un crédit prépayé (5 $ minimum) ; le niveau gratuit de Gemini est exclu pour des utilisateurs en Suisse (conditions d'utilisation). Mistral Large 3 : appel d'outils vérifié sur le compte du projet (un essai, 439 ms, 126 tokens).
+- Open WebUI ne parle pas directement à Bedrock (proxy requis d'après sa documentation) : l'assistant expose une interface compatible OpenAI (`/v1/chat/completions`) et Open WebUI le voit comme un modèle. Commit f242ee1 sur `dev/nicolas`.
+- Test de l'image `assistant:0.5.0` avec Bedrock (un essai) : la question hors sujet sur la météo est refusée en un appel (1 593 tokens en entrée, 19 en sortie).
+- Dimensionnement d'EKS : 2 × `m5.xlarge` (0,192 $/h chacun d'après l'API de prix, `us-east-1`), plan de contrôle à 0,10 $/h ; à ajuster après la première mesure.
+- Une branche Git par membre (`dev/nicolas`) ; seul son propriétaire y pousse.
+
 ## 2026-10-19
 - Licence MIT ajoutée (`LICENSE`), copyright attribué à la HES-SO ; titularité des droits à confirmer par l'enseignant.
 - Dépôt publié sur la forge HEFR (privé).
