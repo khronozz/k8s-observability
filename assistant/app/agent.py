@@ -8,7 +8,6 @@ import time
 
 from langchain.agents import create_agent
 from langchain_core.tools import tool
-from langchain_ollama import ChatOllama
 
 from . import clients, config
 from .clients import UpstreamError
@@ -153,6 +152,9 @@ def cluster_context(ttl_s: int = 300) -> str:
 
 SYSTEM_PROMPT = """Tu es un assistant d'exploitation Kubernetes en LECTURE SEULE. Tu réponds en français.
 Tu disposes d'outils qui interrogent Mimir (métriques, PromQL) et Loki (logs, LogQL). Tu ne peux rien modifier.
+Périmètre : tu ne traites QUE la supervision de ce cluster Kubernetes (métriques, logs, pods, ressources). Pour toute
+autre question (météo, culture générale, programmation, actualité, etc.), réponds en une phrase que tu es limité à la
+supervision du cluster, sans appeler d'outil. Tu peux répondre à une salutation et dire ce que tu sais faire.
 Règles :
 - Appuie chaque affirmation sur le résultat d'un outil. N'invente jamais de valeur, de métrique ou de label.
 - Le contexte ci-dessous donne les labels et les valeurs de `cluster` et `namespace`. N'appelle metric_label_values ou
@@ -180,30 +182,57 @@ Contexte réel du cluster :
 """
 
 
+def build_llm():
+    """Modèle de langage selon LLM_PROVIDER. Imports tardifs : seule la bibliothèque du fournisseur choisi est chargée."""
+    if config.LLM_PROVIDER == "bedrock":
+        from langchain_aws import ChatBedrockConverse
+        return ChatBedrockConverse(model=config.BEDROCK_MODEL_ID, region_name=config.BEDROCK_REGION,
+                                   temperature=0, max_tokens=config.LLM_MAX_TOKENS)
+    if config.LLM_PROVIDER == "ollama":
+        from langchain_ollama import ChatOllama
+        return ChatOllama(
+            model=config.LLM_MODEL,
+            base_url=config.OLLAMA_URL,
+            reasoning=config.LLM_REASONING,
+            num_ctx=config.LLM_NUM_CTX,
+            temperature=0,
+        )
+    raise ValueError(f"LLM_PROVIDER inconnu : {config.LLM_PROVIDER!r} (attendu : ollama ou bedrock)")
+
+
 def build_agent():
-    llm = ChatOllama(
-        model=config.LLM_MODEL,
-        base_url=config.OLLAMA_URL,
-        reasoning=config.LLM_REASONING,
-        num_ctx=config.LLM_NUM_CTX,
-        temperature=0,
-    )
-    return create_agent(llm, TOOLS, system_prompt=SYSTEM_PROMPT.format(context=cluster_context()))
+    return create_agent(build_llm(), TOOLS, system_prompt=SYSTEM_PROMPT.format(context=cluster_context()))
 
 
 def llm_stats(msgs) -> list[dict]:
-    """Une entrée par appel au modèle, d'après les métadonnées renvoyées par Ollama (durées en secondes).
-    Sert à mesurer où passe le temps (chargement, lecture du prompt, génération) au lieu de le supposer."""
+    """Une entrée par appel au modèle. Ollama : durées détaillées (secondes), pour mesurer où passe le temps.
+    Bedrock : tokens et latence de l'appel seulement (Bedrock ne détaille ni chargement ni lecture du prompt) ;
+    `total_s` reste un nombre, car scripts/bench_ask.py les additionne."""
     out = []
     for m in msgs:
         md = getattr(m, "response_metadata", None) or {}
-        if "total_duration" not in md:
-            continue
-        sec = lambda k: round((md.get(k) or 0) / 1e9, 1)
-        out.append({"total_s": sec("total_duration"), "load_s": sec("load_duration"),
-                    "prompt_tokens": md.get("prompt_eval_count"), "prompt_s": sec("prompt_eval_duration"),
-                    "output_tokens": md.get("eval_count"), "gen_s": sec("eval_duration")})
+        um = getattr(m, "usage_metadata", None) or {}
+        if "total_duration" in md:
+            sec = lambda k: round((md.get(k) or 0) / 1e9, 1)
+            out.append({"total_s": sec("total_duration"), "load_s": sec("load_duration"),
+                        "prompt_tokens": md.get("prompt_eval_count"), "prompt_s": sec("prompt_eval_duration"),
+                        "output_tokens": md.get("eval_count"), "gen_s": sec("eval_duration")})
+        elif um:
+            lat = (md.get("metrics") or {}).get("latencyMs") or 0
+            lat = sum(lat) if isinstance(lat, list) else lat   # la bibliothèque le renvoie parfois sous forme de liste
+            out.append({"total_s": round(lat / 1000, 1), "prompt_tokens": um.get("input_tokens"),
+                        "output_tokens": um.get("output_tokens")})
     return out
+
+
+def text_of(content) -> str:
+    """Texte d'un message : chaîne (Ollama) ou liste de blocs (Bedrock : [{"type": "text", "text": ...}])."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(b if isinstance(b, str) else b.get("text", "") for b in content
+                       if isinstance(b, str) or (isinstance(b, dict) and b.get("type", "text") == "text"))
+    return "" if content is None else str(content)
 
 
 def tool_trace(msgs) -> list[dict]:
@@ -222,9 +251,13 @@ def tool_trace(msgs) -> list[dict]:
     return out
 
 
-def ask(question: str, agent=None) -> dict:
+def chat(turns: list[tuple[str, str]], agent=None) -> dict:
+    """Répond à une conversation [(« user » | « assistant », texte), ...] dont le dernier tour est celui de l'utilisateur."""
     agent = agent or build_agent()
-    res = agent.invoke({"messages": [("user", question)]},
-                       config={"recursion_limit": 2 * config.AGENT_MAX_STEPS + 1})
+    res = agent.invoke({"messages": turns}, config={"recursion_limit": 2 * config.AGENT_MAX_STEPS + 1})
     msgs = res["messages"]
-    return {"answer": msgs[-1].content, "tool_calls": tool_trace(msgs), "llm_calls": llm_stats(msgs)}
+    return {"answer": text_of(msgs[-1].content), "tool_calls": tool_trace(msgs), "llm_calls": llm_stats(msgs)}
+
+
+def ask(question: str, agent=None) -> dict:
+    return chat([("user", question)], agent=agent)

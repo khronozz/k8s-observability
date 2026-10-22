@@ -92,3 +92,35 @@ def test_ask_via_tools_app(monkeypatch):
     r = client.post("/tools/ask", json={"question": "salut"})
     assert r.status_code == 200 and r.json()["answer"] == "ok:salut"
     assert client.post("/ask", json={"question": "x"}).status_code == 200
+
+
+def test_v1_models_lists_public_name():
+    r = client.get("/v1/models").json()
+    assert r["data"][0]["id"] == config.PUBLIC_MODEL_NAME
+
+
+def test_v1_chat_completions_plain_and_stream(monkeypatch):
+    from app import agent
+    seen = {}
+
+    def fake_chat(turns, agent=None):
+        seen["turns"] = turns
+        return {"answer": "Bonjour", "tool_calls": [],
+                "llm_calls": [{"total_s": 0.4, "prompt_tokens": 90, "output_tokens": 10}]}
+
+    monkeypatch.setattr(agent, "chat", fake_chat)
+    body = {"model": "m", "messages": [
+        {"role": "system", "content": "ignoré"}, {"role": "user", "content": "salut"},
+        {"role": "assistant", "content": "ok"}, {"role": "user", "content": [{"type": "text", "text": "et ?"}]}]}
+    r = client.post("/v1/chat/completions", json=body).json()
+    assert r["choices"][0]["message"]["content"] == "Bonjour" and r["usage"]["total_tokens"] == 100
+    assert seen["turns"] == [("user", "salut"), ("assistant", "ok"), ("user", "et ?")]   # le « system » d'Open WebUI est écarté
+    s = client.post("/v1/chat/completions", json={**body, "stream": True})
+    assert s.headers["content-type"].startswith("text/event-stream")
+    events = [e for e in s.text.split("\n\n") if e]
+    assert events[-1] == "data: [DONE]" and '"content": "Bonjour"' in events[0]
+
+
+def test_v1_chat_completions_rejects_missing_user_turn():
+    r = client.post("/v1/chat/completions", json={"messages": [{"role": "assistant", "content": "x"}]})
+    assert r.status_code == 422

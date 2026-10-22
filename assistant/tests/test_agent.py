@@ -79,3 +79,36 @@ def test_build_logql_rejects_injection():
             ag.build_logql(bad)
     with pytest.raises(ValueError):
         ag.build_logql("mimir", 'x"}')
+
+
+def test_build_llm_switches_on_provider(monkeypatch):
+    import pytest
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")          # faux identifiants : aucun appel réseau à la construction
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "bedrock")
+    llm = ag.build_llm()
+    assert type(llm).__name__ == "ChatBedrockConverse" and llm.model_id == ag.config.BEDROCK_MODEL_ID
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "ollama")
+    assert type(ag.build_llm()).__name__ == "ChatOllama"
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "autre")
+    with pytest.raises(ValueError):
+        ag.build_llm()
+
+
+def test_llm_stats_bedrock_and_text_blocks():
+    m = AIMessage(content="x", usage_metadata={"input_tokens": 91, "output_tokens": 35, "total_tokens": 126},
+                  response_metadata={"metrics": {"latencyMs": [439]}})
+    assert ag.llm_stats([m]) == [{"total_s": 0.4, "prompt_tokens": 91, "output_tokens": 35}]
+    assert ag.text_of([{"type": "text", "text": "a"}, {"type": "tool_use", "name": "t"}, {"type": "text", "text": "b"}]) == "ab"
+    assert ag.text_of("plain") == "plain"
+
+
+def test_chat_takes_history_and_returns_plain_text():
+    a = create_agent(FakeToolModel(messages=iter([AIMessage(content=[{"type": "text", "text": "Réponse"}])])),
+                     ag.TOOLS, system_prompt="x")
+    r = ag.chat([("user", "salut"), ("assistant", "bonjour"), ("user", "et la météo ?")], agent=a)
+    assert r["answer"] == "Réponse"
+
+
+def test_system_prompt_scopes_to_cluster_supervision():
+    assert "QUE la supervision" in ag.SYSTEM_PROMPT and "{context}" in ag.SYSTEM_PROMPT

@@ -5,8 +5,13 @@ d'outils à l'agent LangGraph et sont aussi utilisables seuls (test, Open WebUI 
 """
 from __future__ import annotations
 
+import json
+import time
+import uuid
+
 from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict
 
 from . import clients, config
 from .clients import UpstreamError
@@ -133,6 +138,63 @@ def _ask(req: "AskRequest"):
 
 
 app.post("/ask", summary="Poser une question en langage naturel (agent, lecture seule)", operation_id="ask")(_ask)
+
+
+# ---- Interface compatible OpenAI (/v1) : Open WebUI voit l'assistant comme un MODÈLE ----
+# Open WebUI envoie la conversation, l'agent répond (un seul enchaînement d'appels au LLM, au lieu d'un modèle
+# intermédiaire qui appellerait ensuite l'outil). Aucune authentification, comme le reste du service : il ne doit être
+# joignable que depuis l'hôte d'Open WebUI (réseau Docker local), jamais depuis Internet.
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    role: str
+    content: str | list | None = None
+
+
+class ChatCompletionRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")   # température, top_p... envoyés par Open WebUI : ignorés
+    model: str | None = None
+    messages: list[ChatMessage]
+    stream: bool = False
+
+
+@app.get("/v1/models", include_in_schema=False)
+def v1_models():
+    return {"object": "list", "data": [{"id": config.PUBLIC_MODEL_NAME, "object": "model", "created": 0,
+                                         "owned_by": "assistant"}]}
+
+
+def _sse(obj) -> str:
+    return "data: " + (obj if isinstance(obj, str) else json.dumps(obj, ensure_ascii=False)) + "\n\n"
+
+
+@app.post("/v1/chat/completions", include_in_schema=False)
+def v1_chat_completions(req: ChatCompletionRequest):
+    from . import agent  # import tardif, comme pour /ask
+    # Seuls les tours « user » et « assistant » sont transmis : le prompt système est celui de l'agent, pas celui d'Open WebUI.
+    turns = [(m.role, agent.text_of(m.content)) for m in req.messages if m.role in ("user", "assistant")]
+    turns = [t for t in turns if t[1].strip()]
+    if not turns or turns[-1][0] != "user":
+        raise HTTPException(status_code=422, detail="le dernier message doit être un message « user » non vide")
+    try:
+        res = agent.chat(turns)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"{e.__class__.__name__}: {str(e)[:300]}")
+    answer, model = res["answer"], req.model or config.PUBLIC_MODEL_NAME
+    cid, created = "chatcmpl-" + uuid.uuid4().hex, int(time.time())
+    if req.stream:
+        # Réponse « en un bloc » : l'agent n'émet pas de jetons au fil de l'eau, mais Open WebUI demande du flux (SSE).
+        def events():
+            base = {"id": cid, "object": "chat.completion.chunk", "created": created, "model": model}
+            yield _sse({**base, "choices": [{"index": 0, "delta": {"role": "assistant", "content": answer},
+                                             "finish_reason": None}]})
+            yield _sse({**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
+            yield _sse("[DONE]")
+        return StreamingResponse(events(), media_type="text/event-stream")
+    pt = sum(c.get("prompt_tokens") or 0 for c in res["llm_calls"])
+    ot = sum(c.get("output_tokens") or 0 for c in res["llm_calls"])
+    return {"id": cid, "object": "chat.completion", "created": created, "model": model,
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": pt, "completion_tokens": ot, "total_tokens": pt + ot}}
 
 # Sous-application exposant UNIQUEMENT `ask`, destinée à Open WebUI (serveur d'outils OpenAPI) : le modèle d'Open
 # WebUI ne voit ainsi qu'un seul outil et n'écrit pas lui-même de PromQL/LogQL (point faible mesuré de qwen3:8b).
