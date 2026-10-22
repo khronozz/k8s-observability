@@ -41,10 +41,17 @@ variable "grafana_admin_password" {
   sensitive = true
 }
 
+variable "deploy_chat_stack" {
+  description = "true (local, Kind) : Ollama, l'assistant et Open WebUI sont installés DANS le cluster. false (AWS) : seuls Mimir, Loki, Alloy et Grafana sont installés ; l'assistant et Open WebUI tournent hors du cluster (instance EC2)."
+  type        = bool
+  default     = true
+}
+
 variable "webui_secret_key" {
   description = "WEBUI_SECRET_KEY d'Open WebUI (générer avec `openssl rand -hex 32`)."
   type        = string
   sensitive   = true
+  default     = "" # inutile si deploy_chat_stack = false
 }
 
 variable "loki_caches_enabled" {
@@ -139,7 +146,8 @@ variable "assistant_image_pull_secrets" {
 
 # --- Compte administrateur d'Open WebUI (créé au premier démarrage) ----------------------------------
 variable "webui_admin_email" {
-  type = string
+  type    = string
+  default = "" # inutile si deploy_chat_stack = false ; une précondition l'exige sinon (main.tf)
 }
 
 variable "webui_admin_name" {
@@ -150,4 +158,5 @@ variable "webui_admin_name" {
 variable "webui_admin_password" {
   type      = string
   sensitive = true
+  default   = "" # voir webui_admin_email
 }

@@ -18,6 +18,7 @@ locals {
 # NON TESTÉ : clés lues dans le values.yaml et le template du dépôt otwld/ollama-helm (branche main, pas forcément
 # la version 1.88.0) ; à confirmer avec `make check-charts`.
 resource "helm_release" "ollama" {
+  count            = var.deploy_chat_stack ? 1 : 0
   name             = "ollama"
   namespace        = "ollama"
   create_namespace = true
@@ -46,6 +47,7 @@ resource "helm_release" "ollama" {
 # L'image n'est PAS construite par OpenTofu : en local `make local-assistant-image` la construit et la charge dans
 # Kind ; sur le cloud elle doit avoir été poussée dans un registre (variable assistant_image_repository).
 resource "helm_release" "assistant" {
+  count            = var.deploy_chat_stack ? 1 : 0
   name             = "assistant"
   namespace        = "assistant"
   create_namespace = true
@@ -74,4 +76,16 @@ resource "helm_release" "assistant" {
   # L'assistant interroge Mimir et Loki à chaque question ; son démarrage (sonde /health) n'en dépend pas, mais
   # ce lien garantit qu'un `apply` réussi laisse un système utilisable.
   depends_on = [helm_release.mimir, helm_release.loki]
+}
+
+# Les ressources ci-dessus sont devenues conditionnelles (count) : ces blocs évitent qu'un état existant
+# les détruise puis les recrée. Sans effet sur un état neuf.
+moved {
+  from = helm_release.ollama
+  to   = helm_release.ollama[0]
+}
+
+moved {
+  from = helm_release.assistant
+  to   = helm_release.assistant[0]
 }

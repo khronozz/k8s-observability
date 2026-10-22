@@ -151,6 +151,7 @@ locals {
 }
 
 resource "helm_release" "open_webui" {
+  count            = var.deploy_chat_stack ? 1 : 0
   name             = "open-webui"
   namespace        = "open-webui"
   create_namespace = true
@@ -180,4 +181,16 @@ resource "helm_release" "open_webui" {
   # Open WebUI lit la spécification de l'assistant au démarrage : l'assistant doit déjà répondre.
   # Pas de dépendance à Ollama : le téléchargement du modèle (long) ne doit pas retarder Open WebUI.
   depends_on = [helm_release.assistant]
+
+  lifecycle {
+    precondition {
+      condition     = var.webui_admin_email != "" && var.webui_admin_password != "" && var.webui_secret_key != ""
+      error_message = "deploy_chat_stack = true exige webui_admin_email, webui_admin_password et webui_secret_key."
+    }
+  }
+}
+
+moved {
+  from = helm_release.open_webui
+  to   = helm_release.open_webui[0]
 }
