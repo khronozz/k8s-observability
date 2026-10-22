@@ -10,10 +10,9 @@ Format : date, changement, preuve ou référence. Seuls les faits constatés son
 - Test de l'image `assistant:0.5.0` avec Bedrock (un essai) : la question hors sujet sur la météo est refusée en un appel (1 593 tokens en entrée, 19 en sortie).
 - Dimensionnement d'EKS : 2 × `m5.xlarge` (0,192 $/h chacun d'après l'API de prix, `us-east-1`), plan de contrôle à 0,10 $/h ; à ajuster après la première mesure.
 - Une branche Git par membre (`dev/nicolas`) ; seul son propriétaire y pousse.
+- Documentation mise à jour pour la cible AWS : README, guide (section 4.12, chapitre 6), architecture v2 (`docs/architecture/Group-13-Architecture-v2.docx`, nouveau fichier ; version 1 inchangée). Rien n'est encore exécuté sur AWS.
 
 ## 2026-10-19
-- Licence MIT ajoutée (`LICENSE`), copyright attribué à la HES-SO ; titularité des droits à confirmer par l'enseignant.
-- Dépôt publié sur la forge HEFR (privé).
 - Test de `think: false` pour la passe de recopie d'Open WebUI : retenu par défaut (`scripts/webui-bootstrap.sh`). Génération de la passe de recopie : 24,7 s → 7,9 s d'après les logs Ollama (comparaison indicative). Guide, section 4.11.
 - `webui_timeout_seconds` (1800 s) : le téléchargement de l'image d'Open WebUI a dépassé l'ancien délai de 600 s (12 min 44 s mesurés).
 - Test de fumée : le contrôle des pods réessaie pendant 5 min (faux échec juste après le déploiement).
