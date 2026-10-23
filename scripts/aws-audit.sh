@@ -8,11 +8,12 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/aws-common.sh"
 set +e
 check_aws
-FOUND=0
+# Drapeau dans un fichier : `report` tourne dans un sous-processus (tube), une variable n'y serait pas conservée.
+FLAG="$(mktemp)"; rm -f "$FLAG"; trap 'rm -f "$FLAG"' EXIT
 section() { echo; echo "== $1"; }
 report() { # $1 = libellé, stdin = lignes trouvées
   local out; out="$(cat)"
-  if [ -n "$out" ] && [ "$out" != "None" ]; then echo "$out" | sed 's/^/   /'; FOUND=1; else echo "   rien"; fi
+  if [ -n "$out" ] && [ "$out" != "None" ]; then echo "$out" | sed 's/^/   /'; touch "$FLAG"; else echo "   rien"; fi
 }
 
 section "Ressources étiquetées Group=13 / Project=P5-monitoring-k8s-ai (API d'étiquettes)"
@@ -68,5 +69,5 @@ section "Rôles IAM préfixés $PREFIX (cluster, nœuds, instance)"
 aws iam list-roles --query "Roles[?starts_with(RoleName, '${PREFIX}-')].RoleName" --output text 2>&1 | tr '\t' '\n' | report
 
 echo
-if [ "$FOUND" -eq 0 ]; then echo "AUDIT : rien trouvé (selon les contrôles ci-dessus)."; exit 0
+if [ ! -e "$FLAG" ]; then echo "AUDIT : rien trouvé (selon les contrôles ci-dessus)."; exit 0
 else echo "AUDIT : RESSOURCES RESTANTES (voir ci-dessus) : à supprimer avant de quitter, elles peuvent être facturées."; exit 1; fi

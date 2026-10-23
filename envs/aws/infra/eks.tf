@@ -44,9 +44,19 @@ module "eks" {
       name           = "${var.prefix}-nodes"
       instance_types = [var.node_instance_type]
       ami_type       = "AL2023_x86_64_STANDARD"
-      min_size       = var.node_count
-      max_size       = var.node_count
-      desired_size   = var.node_count
+
+      # Constaté le 23.10.2026 (premier essai) : avec la valeur par défaut du module (hop limit = 1), les pods ne
+      # joignent pas le service de métadonnées des nœuds ("no EC2 IMDS role found") et le pilote de volumes EBS
+      # reste en CrashLoopBackOff. Avec 2, tous les pods des nœuds peuvent lire les droits du rôle des nœuds :
+      # compromis accepté pour la preuve de concept (alternative plus stricte : Pod Identity, non écrite).
+      metadata_options = {
+        http_endpoint               = "enabled"
+        http_tokens                 = "required"
+        http_put_response_hop_limit = 2
+      }
+      min_size     = var.node_count
+      max_size     = var.node_count
+      desired_size = var.node_count
 
       iam_role_additional_policies = {
         ebs_csi = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
