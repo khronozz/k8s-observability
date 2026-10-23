@@ -29,3 +29,12 @@ mimir:
     ruler_storage:
       s3:
         bucket_name: ${bucket.mimir_ruler}
+
+# Passerelle exposée en NodePort (AWS uniquement) : l'assistant, hors du cluster, la joint par l'adresse d'un nœud.
+# Clés `gateway.service.type` et `gateway.service.nodePort` lues dans le values.yaml du chart ; comportement non testé.
+%{ if node_port != null ~}
+gateway:
+  service:
+    type: NodePort
+    nodePort: ${node_port}
+%{ endif ~}

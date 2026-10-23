@@ -1,0 +1,5 @@
+# Copier en terraform.tfvars (ignoré par Git) et compléter.
+# Version de Kubernetes : `aws eks describe-cluster-versions` (choisir une version proposée par AWS).
+kubernetes_version = "X.YY"
+# Votre adresse IP publique au format CIDR (voir scripts/aws-up.sh pour la détecter). Jamais 0.0.0.0/0.
+admin_cidrs = ["A.B.C.D/32"]

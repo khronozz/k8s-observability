@@ -1,0 +1,58 @@
+# Cluster EKS (module communautaire terraform-aws-modules/eks, v21.25.0 : noms d'entrées lus dans variables.tf du module).
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 21.25"
+
+  name               = "${var.prefix}-eks"
+  kubernetes_version = var.kubernetes_version
+
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = aws_subnet.public[*].id
+
+  # API publique limitée à admin_cidrs. L'accès privé est activé aussi : sans lui, les nœuds (adresse publique
+  # hors admin_cidrs) ne pourraient pas joindre l'API. Raisonnement non vérifié en pratique.
+  endpoint_public_access       = true
+  endpoint_public_access_cidrs = var.admin_cidrs
+  endpoint_private_access      = true
+
+  # L'utilisateur IAM qui lance `tofu apply` devient administrateur du cluster.
+  enable_cluster_creator_admin_permissions = true
+
+  addons = {
+    coredns    = {}
+    kube-proxy = {}
+    vpc-cni = {
+      before_compute = true
+    }
+    # Nécessaire aux volumes persistants de Mimir, Loki et Grafana. Droits donnés via le rôle des nœuds (ci-dessous),
+    # plus simple qu'un rôle par compte de service. NON vérifié : comportement du stockage par défaut sur cette version.
+    aws-ebs-csi-driver = {}
+  }
+
+  eks_managed_node_groups = {
+    main = {
+      name           = "${var.prefix}-nodes"
+      instance_types = [var.node_instance_type]
+      ami_type       = "AL2023_x86_64_STANDARD"
+      min_size       = var.node_count
+      max_size       = var.node_count
+      desired_size   = var.node_count
+
+      iam_role_additional_policies = {
+        ebs_csi = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      }
+    }
+  }
+}
+
+# L'instance EC2 (assistant) joint les passerelles Mimir et Loki sur les nœuds : seuls ces deux ports, seul son groupe
+# de sécurité.
+resource "aws_vpc_security_group_ingress_rule" "nodes_from_host" {
+  for_each                     = tomap(var.gateway_node_ports)
+  security_group_id            = module.eks.node_security_group_id
+  referenced_security_group_id = aws_security_group.host.id
+  ip_protocol                  = "tcp"
+  from_port                    = each.value
+  to_port                      = each.value
+  description                  = "${var.prefix} passerelle ${each.key} depuis hote assistant"
+}

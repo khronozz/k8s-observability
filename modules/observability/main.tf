@@ -32,6 +32,7 @@ resource "helm_release" "mimir" {
     s3_access_key = var.s3_access_key
     s3_secret_key = var.s3_secret_key
     bucket        = local.bucket
+    node_port     = var.gateway_node_ports.mimir
   })]
 }
 
@@ -53,6 +54,7 @@ resource "helm_release" "loki" {
     s3_secret_key  = var.s3_secret_key
     bucket         = local.bucket
     caches_enabled = var.loki_caches_enabled
+    node_port      = var.gateway_node_ports.loki
   })]
 }
 

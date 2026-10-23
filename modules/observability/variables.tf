@@ -160,3 +160,12 @@ variable "webui_admin_password" {
   sensitive = true
   default   = "" # voir webui_admin_email
 }
+
+variable "gateway_node_ports" {
+  description = "Ports NodePort des passerelles Mimir et Loki (plage 30000-32767). Vide (null) : les passerelles restent en ClusterIP (local). Sur AWS, l'instance EC2 qui héberge l'assistant les joint par l'adresse privée d'un nœud ; seul son groupe de sécurité y est autorisé (envs/aws/infra)."
+  type = object({
+    mimir = optional(number)
+    loki  = optional(number)
+  })
+  default = {}
+}
