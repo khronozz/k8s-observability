@@ -18,6 +18,16 @@ module "eks" {
   # L'utilisateur IAM qui lance `tofu apply` devient administrateur du cluster.
   enable_cluster_creator_admin_permissions = true
 
+  # Preuve de concept, facture surveillée (23.10.2026) : on retire trois défauts du module qui créent des ressources
+  # facturées ou qui survivent à la destruction : clé KMS de chiffrement des secrets (suppression différée), journaux du
+  # plan de contrôle dans CloudWatch, fournisseur OIDC (IRSA, inutilisé : les droits passent par le rôle des nœuds).
+  create_kms_key              = false
+  attach_encryption_policy    = false
+  encryption_config           = null
+  enabled_log_types           = []
+  create_cloudwatch_log_group = false
+  enable_irsa                 = false
+
   addons = {
     coredns    = {}
     kube-proxy = {}

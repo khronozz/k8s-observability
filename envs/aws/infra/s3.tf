@@ -20,8 +20,8 @@ resource "aws_s3_bucket" "data" {
 }
 
 resource "aws_s3_bucket_public_access_block" "data" {
-  for_each                = aws_s3_bucket.data
-  bucket                  = each.value.id
+  for_each                = toset(local.bucket_names)
+  bucket                  = aws_s3_bucket.data[each.key].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
