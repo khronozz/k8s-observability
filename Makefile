@@ -13,13 +13,17 @@ GARAGE_REF ?= ef6a03a4215e9a545945e6e34b43a185dd7b718a
 
 .PHONY: help preflight check-charts local-secrets local-up local-down garage-chart local-garage local-garage-init \
         local-assistant-image local-stack local-webui-config local-all local-credentials local-test pf-grafana pf-webui \
-        switch-secrets switch-image switch-apply docs check-secrets
+        switch-secrets switch-image switch-apply docs check-secrets \
+        aws-up aws-down aws-audit aws-allow-ip
 
 help:
 	@echo "Local  : make local-all        (Kind + Garage + toute la pile, de zéro)"
 	@echo "         make local-credentials  (URL et identifiants Open WebUI / Grafana)"
 	@echo "         make local-down         (supprime le cluster et l'état OpenTofu local)"
-	@echo "Cloud  : make switch-secrets, switch-image REGISTRY=..., switch-apply"
+	@echo "AWS    : make aws-up           (EKS + S3 + pile d'observabilité ; ~0,48 \$$/h tant que ça tourne)"
+	@echo "         make aws-down         (détruit tout, puis audit)   make aws-audit   (lecture seule)"
+	@echo "         make aws-allow-ip     (autorise l'adresse IP actuelle)"
+	@echo "Cloud (abandonné) : make switch-secrets, switch-image REGISTRY=..., switch-apply"
 	@echo "Autres : make preflight, make check-charts, make local-test, make check-secrets, make docs"
 
 preflight:
@@ -35,7 +39,7 @@ check-charts:
 	@echo "--- otwld/ollama 1.88.0 : crochet postStart rendu avec le modèle"
 	helm template ollama otwld/ollama --version 1.88.0 --set 'ollama.models.pull[0]=qwen3:8b' | grep -n -B2 -A14 "postStart"
 	@echo "--- open-webui 17.0.0 : clés utilisées"
-	helm show values open-webui/open-webui --version 17.0.0 | grep -n -E "^ollamaUrls:|^extraEnvVars:|^enableOpenaiApi:|^websocket:"
+	helm show values open-webui/open-webui --version 17.0.0 | grep -n -E "^ollamaUrls:|^extraEnvVars:|^enableOpenaiApi:|^websocket:" 
 
 # --- LOCAL (Kind) ---------------------------------------------------------------------------
 local-secrets:
@@ -126,3 +130,16 @@ check-secrets:
 	@hits="$$(git grep -niIE "(password|passwd|secret_key|access_key|api[_-]?key|token)[A-Za-z_]*[\"']?[ ]*[:=][ ]*[\"'][A-Za-z0-9+/_=-]{12,}[\"']" -- . ':!*.example' ':!docs/*.docx' | grep -v 'REPLACE_' || true)"; \
 	if [ -n "$$hits" ]; then echo "À vérifier : valeurs ressemblant à des secrets :"; echo "$$hits"; exit 1; fi
 	@echo "check-secrets : rien de suspect (recherche par motifs, pas une preuve)."
+
+# --- AWS (EN COURS : non exécuté à ce jour) -----------------------------------------------------
+aws-up:
+	scripts/aws-up.sh
+
+aws-down:
+	scripts/aws-down.sh
+
+aws-audit:
+	scripts/aws-audit.sh
+
+aws-allow-ip:
+	scripts/aws-allow-ip.sh
