@@ -29,6 +29,9 @@ done
 [ "${ready:-0}" -ge 2 ] || { echo "Les nœuds ne sont pas prêts. Voir 'kubectl get nodes' (KUBECONFIG=$KUBECONFIG_FILE)." >&2; exit 1; }
 kubectl get nodes
 
+echo ">> Classe de stockage par défaut (gp3, pilote EBS CSI)"
+kubectl apply -f "$STACK_DIR/storageclass.yaml"
+
 echo ">> 3/4 Secrets de la pile (fichier ignoré par Git)"
 SECRETS="$STACK_DIR/secrets.auto.tfvars.json"
 if [ ! -f "$SECRETS" ]; then
