@@ -1,0 +1,41 @@
+#!/bin/bash
+# Démarrage de l'hôte g13-p5 : Docker, Compose, secrets lus dans SSM, puis assistant + Open WebUI.
+# Le journal est dans /var/log/g13-host-setup.log (et /var/log/cloud-init-output.log).
+set -euo pipefail
+exec > >(tee -a /var/log/g13-host-setup.log) 2>&1
+echo "== démarrage $(date -u +%FT%TZ)"
+
+dnf install -y docker
+systemctl enable --now docker
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+
+umask 077
+mkdir -p /opt/g13
+cd /opt/g13
+aws ssm get-parameter --region ${region} --with-decryption --name ${env_param} \
+  --query Parameter.Value --output text > .env
+
+aws ssm get-parameter --region ${region} --with-decryption --name ${token_param} \
+  --query Parameter.Value --output text \
+  | docker login ${registry_host} -u ${registry_username} --password-stdin
+
+cat > compose.yaml <<'COMPOSE'
+${compose}
+COMPOSE
+
+ok=0
+for i in 1 2 3 4 5; do
+  if docker compose pull; then ok=1; break; fi
+  echo "pull échoué ($i/5), nouvel essai dans 15 s"
+  sleep 15
+done
+if [ "$ok" != 1 ]; then
+  echo "ÉCHEC : images introuvables (registre inaccessible depuis AWS, jeton invalide ou image absente)"
+  exit 1
+fi
+docker compose up -d
+echo "== terminé $(date -u +%FT%TZ)"

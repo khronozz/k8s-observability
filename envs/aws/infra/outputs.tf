@@ -35,3 +35,24 @@ output "host_security_group_id" {
 output "gateway_node_ports" {
   value = var.gateway_node_ports
 }
+
+output "host_instance_id" {
+  value = aws_instance.host.id
+}
+
+output "host_public_ip" {
+  value = aws_instance.host.public_ip
+}
+
+output "webui_url" {
+  value = "http://${aws_instance.host.public_ip}:3000"
+}
+
+output "webui_admin_email" {
+  value = var.webui_admin_email
+}
+
+output "webui_admin_password" {
+  value     = random_password.webui_admin.result
+  sensitive = true
+}
