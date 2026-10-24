@@ -160,8 +160,8 @@ kubectl run appli-demo -n test-incident --image=busybox --restart=Always -- \
 
 - **Action** : nous redémarrons l'assistant sur l'hôte pendant qu'Open WebUI est ouvert.
 - **Réussite** : l'interface fonctionne de nouveau sans intervention.
-- **Remarque** : l'hôte n'a aujourd'hui aucun accès à distance (ni clé SSH ni session SSM). Ce test demande d'en
-  ajouter un. À décider.
+- **Remarque** : on accède à l'hôte par une session SSM (aucun port ouvert, aucune clé). Ce point n'est pas encore
+  vérifié : il faut que l'agent soit présent sur l'instance et que nos droits AWS permettent d'ouvrir la session.
 
 | Date | Résultat | Remarque |
 |---|---|---|

@@ -105,6 +105,14 @@ resource "aws_iam_role_policy" "host" {
   policy = data.aws_iam_policy_document.host.json
 }
 
+# Accès à l'hôte par session SSM (Session Manager) : aucun port à ouvrir, aucune clé SSH. Sert à lire les journaux de
+# démarrage, mesurer la mémoire et redémarrer l'assistant (test R2). À VÉRIFIER : l'agent SSM est censé être déjà
+# présent dans l'image Amazon Linux 2023 (non constaté), et il faut le module session-manager-plugin côté poste.
+resource "aws_iam_role_policy_attachment" "host_ssm" {
+  role       = aws_iam_role.host.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "host" {
   name = "${var.prefix}-host"
   role = aws_iam_role.host.name
