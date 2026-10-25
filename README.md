@@ -185,7 +185,7 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
 - Les durées de déploiement de Mimir et Loki avec Helm ; l'état des composants Helm marqués échoués (ils ont dépassé leur délai avant la classe de stockage).
 - La mémoire réelle de l'hôte (`t3.small`, 2 Gio : Open WebUI occupait ≈ 0,7 Gio sur Kind, le reste n'est pas mesuré).
 - Crédits AWS restants et responsabilité de la facture (page des crédits : 0 $ de crédits visibles ; les étudiants ont été informés oralement que l'école paie ; le courriel du 15.10 ne le dit pas).
-- Les trois cas d'usage et les refus hors sujet avec le vrai modèle : voir le [plan de tests](docs/tests/plan-de-tests.md), aucun résultat encore.
+- Les trois cas d'usage avec le vrai modèle : voir le [plan de tests](docs/tests/plan-de-tests.md), aucun résultat encore. Les refus (hors sujet, actions, secrets) ont été essayés en local le 25.10, un essai par formulation.
 
 ### Pièges rencontrés (utile à qui reprend)
 
@@ -232,7 +232,7 @@ docs/                     guide (DOCX), sources du guide (guide-src/), architect
 
 - [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide (installation manuelle, automatisation, décisions et justifications, mesures, échecs et corrections, points ouverts). Régénérer : `make docs`.
 - [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`), **conservé tel quel, ne pas le modifier**, et sa mise à jour [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (cible AWS, assistant hors cluster).
-- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) : les 13 scénarios de test (cas d'usage, refus, pannes), résultats à remplir.
+- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) : les 14 scénarios de test (cas d'usage, refus, pannes), résultats à remplir.
 - [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) : déroulé de la démonstration et plan de secours.
 - [`CHANGELOG.md`](CHANGELOG.md) : journal des changements importants.
 
@@ -252,7 +252,7 @@ docs/                     guide (DOCX), sources du guide (guide-src/), architect
 - L'assistant n'a ni authentification ni NetworkPolicy ; Open WebUI est prévu pour un seul administrateur.
 - L'agent (`qwen3:8b`) produit parfois une requête PromQL mal formée et peut renoncer ; le test de fumée vérifie qu'un outil est appelé, pas que la réponse est utile.
 - Les variables d'environnement d'Open WebUI ne servent qu'au premier démarrage : les modifier ensuite n'a aucun effet sans supprimer son volume.
-- Rien n'a été mesuré sur la fiabilité des réponses sur un jeu de questions étendu. Avec Bedrock, le comportement de l'agent n'a été essayé que sur une question (refus hors sujet).
+- Rien n'a été mesuré sur la fiabilité des réponses sur un jeu de questions étendu. Avec Bedrock, seuls les **refus** ont été essayés (14 questions, un essai chacune, en local, le 25.10.2026 : [résultats](docs/tests/resultats/2026-10-25-local-bedrock.md)). Les cas d'usage (santé du cluster, incident, cause racine) n'ont pas été essayés avec ce modèle.
 - L'interface `/v1` de l'assistant n'a pas d'authentification : elle ne doit être joignable que depuis l'hôte d'Open WebUI, jamais depuis Internet.
 - Sur AWS, Open WebUI est servi en HTTP simple (sans chiffrement) sur le port 3000, limité à nos adresses : acceptable pour une preuve de concept, pas pour la production.
 - Les nœuds EKS ont une adresse publique (pas de passerelle NAT, pour limiter le coût) ; l'accès à l'API Kubernetes et à l'interface est limité à nos adresses IP.
