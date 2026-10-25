@@ -10,7 +10,7 @@ Format : date, changement, preuve ou référence. Seuls les faits constatés son
 - Image de l'assistant poussée en `linux/amd64` dans le registre GitLab du projet (construction `buildx` depuis un Mac arm64, 50 s) ; architecture vérifiée dans le registre. Jeton de déploiement GitLab en lecture seule créé.
 - `scripts/aws-up.sh` : contrôle des variables et du jeton avant toute création, attente d'Open WebUI en fin de déploiement (commit a164eb4). Classe de stockage `gp3` par défaut (e080bb0).
 - Plan de tests : 12 scénarios au départ, 14 aujourd'hui (S6 et S7 ajoutés) (`docs/tests/plan-de-tests.md`, commit b3b3979).
-- Refus de l'assistant essayés en local avec Bedrock (S1, S2, S4, S6, S7 : 14 questions, un essai chacune) : 14 réponses conformes à notre lecture, un écart sur la question mixte de S7. Détail brut dans `docs/tests/resultats/2026-10-25-local-bedrock.md` (commit cf68027).
+- Refus de l'assistant essayés en local avec Bedrock (S1, S2, S4, S6, S7 : 15 questions, un essai chacune) : 14 réponses conformes à notre lecture et une partielle (question mixte de S7). Détail brut dans `docs/tests/resultats/2026-10-25-local-bedrock.md` (commit cf68027).
 - Bedrock : appel réel du modèle `mistral.mistral-large-3-675b-instruct` réussi malgré le retrait des droits IAM et EKS ; le modèle n'apparaît pas dans la liste par fournisseur Mistral (cause inconnue).
 
 ## 2026-10-24
