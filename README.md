@@ -224,7 +224,7 @@ envs/aws/infra/           AWS, étape 1 : réseau, EKS, S3, droits, hôte EC2 (a
 kind/                     configuration du cluster local
 scripts/                  local : preflight, secrets, Garage, Open WebUI, test de fumée ; AWS : aws-up, aws-down, aws-audit, aws-allow-ip ; scripts SCK/SCS3 (abandonnés)
 manual/local/             valeurs Helm de l'installation manuelle testée (référence)
-docs/                     guide (DOCX), sources du guide (guide-src/), architecture (architecture/), plan de tests (tests/)
+docs/                     guide (DOCX), sources du guide (guide-src/), architecture (architecture/), plan de tests (tests/), démonstration (demo/)
 .gitlab/issue_templates/  modèle de ticket « Test / découverte »
 ```
 
@@ -232,7 +232,8 @@ docs/                     guide (DOCX), sources du guide (guide-src/), architect
 
 - [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide (installation manuelle, automatisation, décisions et justifications, mesures, échecs et corrections, points ouverts). Régénérer : `make docs`.
 - [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`), **conservé tel quel, ne pas le modifier**, et sa mise à jour [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (cible AWS, assistant hors cluster).
-- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) : les 12 scénarios de test (cas d'usage, refus, pannes), résultats à remplir.
+- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) : les 13 scénarios de test (cas d'usage, refus, pannes), résultats à remplir.
+- [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) : déroulé de la démonstration et plan de secours.
 - [`CHANGELOG.md`](CHANGELOG.md) : journal des changements importants.
 
 ## Travailler à plusieurs

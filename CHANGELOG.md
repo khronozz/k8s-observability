@@ -3,6 +3,8 @@
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
 ## 2026-10-25
+- Documents mis à jour : guide (sections 6.10 à 6.13, calendrier, décisions), architecture v2 (état réel), déroulé de la démonstration (`docs/demo/deroule-demonstration.md`, écrit avant les essais).
+- `scripts/run_scenarios.py` : pose les questions de refus (S1, S2, S4, S6) à l'assistant et note les réponses ; testé seulement contre un faux serveur. Scénario S6 ajouté au plan de tests (13 scénarios).
 - Hôte EC2 écrit dans `envs/aws/infra` (`host.tf` et modèles) : assistant et Open WebUI en Docker Compose, rôle limité au modèle Bedrock choisi et à la lecture de deux secrets SSM, accès par session SSM. Syntaxe validée avec `tofu validate`, **jamais lancé** (commit bd06730, SSM : 5c550b5).
 - Instance `t3.small` : Open WebUI occupait ≈ 0,7 Gio sur Kind (relevé du 17.10) ; la mémoire de l'ensemble sur AWS n'est pas mesurée.
 - Image de l'assistant poussée en `linux/amd64` dans le registre GitLab du projet (construction `buildx` depuis un Mac arm64, 50 s) ; architecture vérifiée dans le registre. Jeton de déploiement GitLab en lecture seule créé.
