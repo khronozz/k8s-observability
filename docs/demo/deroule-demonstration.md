@@ -5,9 +5,9 @@ et quoi faire si quelque chose ne marche pas. Il est écrit **avant** les essais
 constats. On les remplace par ce qui s'est vraiment passé après la répétition.
 
 **Il n'y aura pas de démonstration en direct** (information de l'étudiant, 25.10.2026). La démonstration est donc
-**présentée dans le rapport**, avec des preuves : captures d'écran et, si possible, un enregistrement. Ce document
-sert à préparer une séance où l'on **déroule les scénarios en les capturant**. À confirmer auprès de l'enseignant :
-le format attendu (captures seulement, ou aussi une vidéo) et le format du rapport.
+**présentée dans le rapport**, avec des preuves : des captures d'écran. Ce document
+sert à préparer une séance où l'on **déroule les scénarios en les capturant**. Format indiqué par l'étudiant :
+rapport écrit, probablement en PDF, avec captures d'écran et sans vidéo (à confirmer auprès de l'enseignant).
 
 ## Ce que nous voulons faire comprendre
 
@@ -22,7 +22,6 @@ le format attendu (captures seulement, ou aussi une vidéo) et le format du rapp
 - [ ] `make aws-up` s'est terminé et Open WebUI répond. Compter une heure de marge pour le déploiement.
 - [ ] Le pod d'incident est prêt (voir `docs/tests/plan-de-tests.md`, scénario F2) et ses journaux arrivent dans Loki.
 - [ ] Les trois questions de la démonstration ont été posées au moins une fois en répétition.
-- [ ] Un outil d'enregistrement d'écran est prêt (si une vidéo est demandée).
 - [ ] Rien de secret à l'écran : ni numéro de compte AWS, ni adresse IP, ni mot de passe, ni jeton.
 - [ ] Après la séance : `make aws-down` et vérification « rien trouvé » avec `make aws-audit`, puis suppression du jeton de
   déploiement GitLab et de l'image du registre (le projet se termine le 3 novembre).
