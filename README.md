@@ -6,11 +6,13 @@ Ce dépôt contient tout ce qu'il faut pour monter, **d'abord en local sur Kind,
 métriques et les logs d'un cluster Kubernetes et permet de les interroger en langage naturel. **En local, aucune donnée ne quitte la
 machine** ; sur AWS, l'assistant appellera Amazon Bedrock (voir « Pourquoi ce projet »).
 
-> **État honnête (22.10.2026)** : le déploiement **local (Kind)** a été exécuté de bout en bout, une fois sans intervention
-> (`make local-all`, test de fumée 6 contrôles sur 6), après trois tentatives échouées puis corrigées. Le déploiement **AWS n'a pas encore
-> été exécuté** : les choix sont faits et plusieurs points ont été vérifiés (section « Déploiement sur AWS »), mais **aucune ressource AWS
-> n'a été créée** à ce jour. Le déploiement Switch Cloud, jamais exécuté, est **abandonné**.
-> Détail de ce qui est vérifié ou non : [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx), sections 0, 3.7, 4.12, 5 et 6.
+> **État honnête (25.10.2026)** : le déploiement **local (Kind)** a été exécuté de bout en bout, une fois sans intervention
+> (`make local-all`, test de fumée 6 contrôles sur 6). Le déploiement **AWS a été exécuté deux fois** : l'infrastructure (réseau, EKS, S3, droits)
+> se crée et se détruit avec des scripts, mais la pile complète n'a **jamais tourné jusqu'au bout** : Mimir et Loki étaient en marche, Alloy et
+> Grafana n'ont pas été installés, car les droits AWS de l'utilisateur ont été retirés le 24.10.2026 à 15h17 (cause inconnue). L'**hôte EC2**
+> (assistant + Open WebUI) est écrit et sa syntaxe est validée, mais il n'a **jamais été lancé**. Le déploiement Switch Cloud, jamais exécuté, est **abandonné**.
+> Détail : section « Déploiement sur AWS » ci-dessous, [plan de tests](docs/tests/plan-de-tests.md) (aucun résultat encore),
+> [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx).
 
 ## Pourquoi ce projet
 
@@ -109,7 +111,7 @@ Dépliez « Voir le résultat de ask_cluster_assistant » pour voir les requête
 make local-down       # supprime le cluster, l'état OpenTofu local et les clés S3 ; conserve les mots de passe générés
 ```
 
-## Déploiement sur AWS (EN COURS : choix faits, rien d'exécuté sur AWS)
+## Déploiement sur AWS (partiellement exécuté)
 
 Retour du professeur du 22.10.2026 et ce que le groupe en a retenu :
 
@@ -130,66 +132,79 @@ les crédits AWS. Les crédits restants et leur couverture de Bedrock ne sont **
 Bedrock (il passe par un proxy, le *Bedrock Access Gateway*). Plutôt que d'ajouter ce composant, l'assistant expose `/v1/chat/completions` et
 Open WebUI le voit comme un modèle. Il reste ainsi un seul enchaînement d'appels au LLM par question, au lieu de deux (économie **non mesurée**).
 
-### Architecture cible (NON IMPLÉMENTÉE)
+### Architecture cible
 
 ```
 Compte AWS, région us-east-1
   ├─ Cluster EKS (surveillé)       Alloy ──▶ Mimir, Loki ──▶ Amazon S3 ; Grafana        (2 nœuds m5.xlarge : 4 vCPU, 16 Gio chacun)
-  ├─ Instance EC2 (hors cluster)   Open WebUI ──▶ assistant (/v1) ──▶ Mimir, Loki       (accès réseau restreint, jamais public)
-  └─ Amazon Bedrock                Mistral Large 3, appelé par l'assistant              (identifiants du rôle de l'instance : prévu)
+  ├─ Instance EC2 (hors cluster)   Open WebUI ──▶ assistant (/v1) ──▶ Mimir, Loki       (t3.small, Docker Compose ; port 3000 limité à nos adresses)
+  └─ Amazon Bedrock                Mistral Large 3, appelé par l'assistant              (rôle de l'instance, limité à ce modèle)
 ```
 
-### Vérifié le 22.10.2026 (AWS CLI 1.46.1)
+L'assistant joint Mimir et Loki par deux ports ouverts sur les nœuds (NodePort 30090 et 30310), accessibles **seulement depuis le groupe de
+sécurité de l'hôte**. Mimir et Loki n'ont pas d'authentification : ils ne doivent jamais être joignables depuis Internet.
+Les images viennent du registre GitLab du projet (image `linux/amd64`, jeton de déploiement en lecture seule).
 
-| Point | Résultat observé |
-|---|---|
-| Identité | utilisateur IAM, groupe `students`, politique `AdministratorAccess` (plus Bedrock, EC2, S3, CloudFormation). Une règle d'organisation éventuelle ne serait pas visible à ce niveau |
-| Région configurée | `us-east-1` |
-| EKS | `aws eks list-clusters` : liste vide (aucun cluster) |
-| Bedrock, Mistral Large 3 | appel d'outils fonctionnel (1 essai : `stopReason: tool_use`, 439 ms, 126 tokens) |
-| Image de l'assistant `0.5.0` | construite sur Mac (40,6 s) ; 58 tests pytest avec faux modèles ; avec Bedrock, la question sur la météo est refusée (1 essai : 1 593 tokens en entrée, 19 en sortie) |
+### Comment l'utiliser
 
-### Reste à vérifier ou à faire (NON TESTÉ)
+```bash
+make aws-up        # crée tout (≈ 0,48 $/h pour le cluster) : lit .work/registry-token et envs/aws/infra/terraform.tfvars
+make aws-audit     # liste ce qui reste (lecture seule)
+make aws-down      # détruit tout, puis lance l'audit
+make aws-allow-ip  # ajoute l'adresse IP actuelle aux adresses autorisées (changement de lieu)
+```
 
-- crédits AWS restants et couverture de Bedrock ; compte peut-être partagé avec d'autres étudiants (non vérifié) : préfixe `g13-` et étiquettes sur nos ressources ;
-- quotas (vCPU, clusters EKS) ;
-- architecture de l'image : celle construite sur Mac est **arm64**, une instance `m5`/`t3` est x86 : reconstruire en `linux/amd64` (ou choisir une instance Graviton) ;
-- authentification de `kubectl` auprès d'EKS avec le CLI AWS version 1 (`aws eks get-token`) ;
-- accès réseau de l'instance EC2 vers Mimir et Loki (ils n'ont pas d'authentification : ne jamais les exposer publiquement) ;
-- registre d'images (ECR ou registre GitLab) ; configuration et exposition d'Open WebUI sur l'instance ;
-- consommation mémoire réelle de la pile (le dimensionnement à 2 × 16 Gio est une borne déduite de l'installation Kind, pas une mesure) ;
-- calibrage de l'assistant : un seul essai du refus hors sujet.
+Avant le premier lancement : copier `envs/aws/infra/terraform.tfvars.example` en `terraform.tfvars` et le compléter (`kubernetes_version`,
+`assistant_image`, `registry_username`), pousser l'image de l'assistant dans le registre (`docker buildx build --platform linux/amd64 ... --push`),
+et écrire le jeton de déploiement GitLab dans `.work/registry-token` (une ligne, droits 600, ignoré par Git). Le jeton ne doit jamais être
+collé dans un message, un ticket ou un fichier versionné.
+
+Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 13, projet 5) et les étiquettes `Project`, `Group`, `Owner`.
+**Nous ne touchons à rien qui n'a pas ce préfixe ni ces étiquettes** : le compte peut être partagé avec d'autres étudiants.
+
+### Ce qui a été observé
+
+| Date | Point | Résultat observé |
+|---|---|---|
+| 22.10 | Identité AWS | utilisateur IAM, groupe `students`, politique `AdministratorAccess` à cette date |
+| 22.10 | Bedrock, Mistral Large 3 | appel d'outils fonctionnel (1 essai : `stopReason: tool_use`, 439 ms, 126 tokens) |
+| 22.10 | Image `assistant:0.5.0` | construite sur Mac ; 58 tests pytest avec faux modèles ; question sur la météo refusée avec Bedrock (1 essai) |
+| 23.10 | Première exécution complète (création puis destruction) | création du cluster ≈ 10 à 11 min, groupe de nœuds 1 à 2 min, modules complémentaires 16 à 47 s ; destruction : groupe de nœuds 8 min, passerelle Internet 7 min, cluster 3 min ; audit final « rien trouvé » ; coût estimé ≈ 0,45 $ pour ≈ 56 min (calcul d'après les prix, **pas** une facture) |
+| 23.10 | Accès `kubectl` à EKS avec le CLI AWS version 1 | fonctionne (`aws eks update-kubeconfig`) |
+| 23.10 puis 24.10 | Pilote de disques EBS en échec (`no EC2 IMDS role found`) à la première exécution | corrigé en passant la limite de sauts des métadonnées à 2 sur les nœuds ; vérifié à la deuxième exécution (module en 47 s, contrôleurs 6/6) |
+| 24.10 | Disques des composants en attente (aucune classe de stockage par défaut sur EKS) | classe `gp3` par défaut ajoutée (`envs/aws/stack/storageclass.yaml`) ; les volumes se sont liés et les pods Mimir et Loki sont passés en `Running` |
+| 24.10, 15h17 | Droits IAM et EKS retirés pour l'utilisateur | `AccessDenied` (« no identity-based policy allows... ») pour IAM et EKS ; Bedrock et l'identité restent utilisables. Cause inconnue ; demande envoyée dans le canal Teams du cours. Constaté encore le 25.10 à 00h32 |
+| 25.10 | Bedrock après le retrait des droits | appel du modèle `mistral.mistral-large-3-675b-instruct` réussi (11 tokens). Ce modèle n'apparaît pas dans la liste filtrée par fournisseur Mistral (cause inconnue) |
+| 25.10 | Registre GitLab | image de l'assistant poussée en `linux/amd64` et vérifiée dans le registre |
+
+### Ce qui n'est pas vérifié
+
+- **L'hôte EC2** n'a jamais été lancé : accès au registre depuis AWS, lecture des secrets dans SSM, appel de Bedrock depuis le rôle de l'instance
+  (autorisation sur le modèle), versions de Docker Compose et d'Open WebUI choisies, étiquette qui permet de retrouver les nœuds EKS, accès par session SSM.
+- Alloy et Grafana n'ont jamais été installés sur AWS ; l'écriture de Mimir et Loki dans S3 n'a pas été constatée (pods `Running`, mais aucune donnée relue).
+- Les durées de déploiement de Mimir et Loki avec Helm ; l'état des composants Helm marqués échoués (ils ont dépassé leur délai avant la classe de stockage).
+- La mémoire réelle de l'hôte (`t3.small`, 2 Gio : Open WebUI occupait ≈ 0,7 Gio sur Kind, le reste n'est pas mesuré).
+- Crédits AWS restants et responsabilité de la facture (page des crédits : 0 $ de crédits visibles ; les étudiants ont été informés oralement que l'école paie ; le courriel du 15.10 ne le dit pas).
+- Les trois cas d'usage et les refus hors sujet avec le vrai modèle : voir le [plan de tests](docs/tests/plan-de-tests.md), aucun résultat encore.
+
+### Pièges rencontrés (utile à qui reprend)
+
+- Les nœuds EKS exigent une limite de sauts des métadonnées de 2 : sinon les pods n'atteignent pas les droits du nœud (EBS) ; même chose pour les conteneurs de l'hôte.
+- EKS n'a pas de classe de stockage utilisable par défaut : sans elle, les volumes restent en attente et Helm dépasse son délai.
+- Sur macOS, `sed` retient la sortie dans un tube : utiliser `sed -l` ; `caffeinate -i` évite la mise en veille pendant les attentes longues.
+- Les sorties de commandes AWS peuvent contenir le numéro de compte, y compris dans les messages d'erreur : le masquer avant de coller quoi que ce soit.
+- Une destruction doit supprimer les volumes (PVC) **avant** le cluster, sinon des disques restent facturés.
 
 ### Coûts (prix à la demande, `us-east-1`, lus avec l'API de prix AWS le 22.10.2026)
 
 | Poste | Prix |
 |---|---|
 | `m5.xlarge` (4 vCPU, 16 Gio) | 0,192 $/h par nœud, soit 0,384 $/h pour 2 nœuds |
-| `t3.xlarge`, `m5.large`, `t3.large` | 0,1664 $, 0,096 $ et 0,0832 $ par heure |
 | Plan de contrôle EKS (support standard) | 0,10 $/h (page de prix AWS) |
 | Mistral Large 3 (Bedrock) | 0,50 $ en entrée et 1,50 $ en sortie par million de tokens |
 
-Nœuds et plan de contrôle : **0,484 $/h**, soit environ 1,45 $ pour une session de 3 h et environ 11,60 $ si le cluster est oublié pendant 24 h.
-Volumes, load balancers, passerelle NAT éventuelle et instance EC2 ne sont **pas encore chiffrés**. Règle du groupe : sessions courtes et planifiées,
-destruction et audit des ressources restantes après chaque session.
-
-### Vérifications préalables (lecture seule, sans coût)
-
-Chaque membre qui lancera un déploiement les exécute avec son propre utilisateur :
-
-```bash
-aws sts get-caller-identity --query Arn --output text      # votre identité (masquez le numéro de compte si vous collez le résultat)
-aws configure get region                                   # attendu : us-east-1
-aws eks list-clusters                                      # clusters existants
-aws iam list-groups-for-user --user-name <votre-utilisateur>
-aws iam list-attached-group-policies --group-name <votre-groupe>
-```
-
-### Suite prévue
-
-Les commandes `make aws-*` et le dossier `envs/aws/` **n'existent pas encore**. Ordre prévu : environnement OpenTofu pour AWS (réseau, EKS,
-S3, instance EC2, rôles), scripts de création, de destruction et d'audit, puis une première session de test de 3 h au plus, suivie de la destruction
-et de l'audit. Les mesures de cette session remplaceront les hypothèses ci-dessus.
+Nœuds et plan de contrôle : **0,484 $/h**, soit environ 11,60 $ par jour si le cluster est oublié. L'instance EC2, les volumes et le trafic ne sont
+**pas encore chiffrés**. Règle du groupe : sessions courtes et planifiées, destruction et audit après chaque session.
 
 ### Switch Cloud : abandonné
 
@@ -205,11 +220,11 @@ charts/assistant/         chart Helm de l'assistant
 modules/observability/    module OpenTofu partagé (Mimir, Loki, k8s-monitoring, Grafana, Ollama, assistant, Open WebUI)
 envs/local/               assemblage Kind (Garage + module)
 envs/switch/              assemblage Switch Cloud (ABANDONNÉ, jamais exécuté, conservé en référence)
-envs/aws/                 (à venir) assemblage AWS : EKS, S3, instance EC2
+envs/aws/infra/           AWS, étape 1 : réseau, EKS, S3, droits, hôte EC2 (assistant + Open WebUI) ; envs/aws/stack/ : étape 2 (Mimir, Loki, Alloy, Grafana)
 kind/                     configuration du cluster local
-scripts/                  preflight, secrets, Garage, configuration d'Open WebUI, test de fumée, identifiants ; scripts SCK/SCS3 (abandonnés)
+scripts/                  local : preflight, secrets, Garage, Open WebUI, test de fumée ; AWS : aws-up, aws-down, aws-audit, aws-allow-ip ; scripts SCK/SCS3 (abandonnés)
 manual/local/             valeurs Helm de l'installation manuelle testée (référence)
-docs/                     guide (DOCX), sources du guide (guide-src/), document d'architecture rendu (architecture/)
+docs/                     guide (DOCX), sources du guide (guide-src/), architecture (architecture/), plan de tests (tests/)
 .gitlab/issue_templates/  modèle de ticket « Test / découverte »
 ```
 
@@ -217,6 +232,7 @@ docs/                     guide (DOCX), sources du guide (guide-src/), document 
 
 - [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide (installation manuelle, automatisation, décisions et justifications, mesures, échecs et corrections, points ouverts). Régénérer : `make docs`.
 - [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`), **conservé tel quel, ne pas le modifier**, et sa mise à jour [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (cible AWS, assistant hors cluster).
+- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) : les 12 scénarios de test (cas d'usage, refus, pannes), résultats à remplir.
 - [`CHANGELOG.md`](CHANGELOG.md) : journal des changements importants.
 
 ## Travailler à plusieurs
@@ -237,6 +253,9 @@ docs/                     guide (DOCX), sources du guide (guide-src/), document 
 - Les variables d'environnement d'Open WebUI ne servent qu'au premier démarrage : les modifier ensuite n'a aucun effet sans supprimer son volume.
 - Rien n'a été mesuré sur la fiabilité des réponses sur un jeu de questions étendu. Avec Bedrock, le comportement de l'agent n'a été essayé que sur une question (refus hors sujet).
 - L'interface `/v1` de l'assistant n'a pas d'authentification : elle ne doit être joignable que depuis l'hôte d'Open WebUI, jamais depuis Internet.
+- Sur AWS, Open WebUI est servi en HTTP simple (sans chiffrement) sur le port 3000, limité à nos adresses : acceptable pour une preuve de concept, pas pour la production.
+- Les nœuds EKS ont une adresse publique (pas de passerelle NAT, pour limiter le coût) ; l'accès à l'API Kubernetes et à l'interface est limité à nos adresses IP.
+- L'assistant s'adresse à un seul nœud EKS pour joindre Mimir et Loki : si ce nœud est remplacé, l'hôte doit être recréé.
 
 ## Licence
 

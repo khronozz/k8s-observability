@@ -2,6 +2,24 @@
 
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
+## 2026-10-25
+- Hôte EC2 écrit dans `envs/aws/infra` (`host.tf` et modèles) : assistant et Open WebUI en Docker Compose, rôle limité au modèle Bedrock choisi et à la lecture de deux secrets SSM, accès par session SSM. Syntaxe validée avec `tofu validate`, **jamais lancé** (commit bd06730, SSM : 5c550b5).
+- Instance `t3.small` : Open WebUI occupait ≈ 0,7 Gio sur Kind (relevé du 17.10) ; la mémoire de l'ensemble sur AWS n'est pas mesurée.
+- Image de l'assistant poussée en `linux/amd64` dans le registre GitLab du projet (construction `buildx` depuis un Mac arm64, 50 s) ; architecture vérifiée dans le registre. Jeton de déploiement GitLab en lecture seule créé.
+- `scripts/aws-up.sh` : contrôle des variables et du jeton avant toute création, attente d'Open WebUI en fin de déploiement (commit a164eb4). Classe de stockage `gp3` par défaut (e080bb0).
+- Plan de tests : 12 scénarios, résultats vides (`docs/tests/plan-de-tests.md`, commit b3b3979).
+- Bedrock : appel réel du modèle `mistral.mistral-large-3-675b-instruct` réussi malgré le retrait des droits IAM et EKS ; le modèle n'apparaît pas dans la liste par fournisseur Mistral (cause inconnue).
+
+## 2026-10-24
+- Deuxième exécution AWS. Droits IAM et EKS retirés pour l'utilisateur à 15h17 (cause inconnue, `AccessDenied`) alors qu'un cluster de test était en marche (≈ 0,48 $/h). Demande envoyée dans le canal Teams du cours ; aucun contournement tenté. Constat inchangé le 25.10 à 00h32.
+- Pilote de disques EBS en échec (`no EC2 IMDS role found`, première exécution) : limite de sauts des métadonnées passée à 2 ; vérifié (module en 47 s, contrôleurs 6/6).
+- Volumes en attente (aucune classe de stockage par défaut sur EKS) : classe `gp3` par défaut ; pods Mimir et Loki en `Running`. Alloy et Grafana n'ont pas été installés.
+- Audit : le verdict ne tenait pas compte des ressources trouvées (variable perdue dans un sous-processus) ; corrigé et confirmé par l'utilisateur.
+
+## 2026-10-23
+- Première exécution AWS complète (création puis destruction) : cluster ≈ 10 à 11 min, groupe de nœuds 1 à 2 min, modules complémentaires 16 à 47 s ; destruction : groupe de nœuds 8 min, passerelle Internet 7 min, cluster 3 min ; audit final « rien trouvé ». Coût estimé ≈ 0,45 $ (calcul, pas une facture).
+- Environnement `envs/aws/infra` (réseau, EKS, S3, droits) et `envs/aws/stack` (Mimir, Loki, Alloy, Grafana), scripts `aws-up`, `aws-down`, `aws-audit`, `aws-allow-ip`. Préfixe `g13-p5`, étiquettes `Project`, `Group`, `Owner`.
+
 ## 2026-10-22
 - Retour du professeur : Switch Cloud abandonné au profit d'AWS (`us-east-1`) ; LLM hébergé localement abandonné au profit d'un modèle public ; l'assistant sort du cluster surveillé. Mimir, Loki, Alloy et Grafana restent dans le cluster ; l'assistant et Open WebUI iront sur une instance EC2.
 - Compte AWS (lu avec le CLI) : utilisateur IAM du groupe `students` avec la politique `AdministratorAccess` ; `aws eks list-clusters` renvoie une liste vide.
