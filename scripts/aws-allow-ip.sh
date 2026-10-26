@@ -6,5 +6,6 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/aws-common.sh"
 need "$TF"
 check_aws
+load_registry_token_for_destroy
 update_admin_cidrs "${1:-}"
-"$TF" -chdir="$INFRA_DIR" apply -input=false -auto-approve
+"$TF" -chdir="$INFRA_DIR" apply -input=false -auto-approve 2>&1 | mask_output

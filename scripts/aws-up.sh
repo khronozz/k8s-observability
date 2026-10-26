@@ -26,7 +26,7 @@ export TF_VAR_registry_token="$(tr -d '\n\r ' < "$TOKEN_FILE")"
 
 echo ">> 1/5 Infrastructure (VPC, EKS, S3, IAM, hôte EC2) : le cluster met plusieurs minutes à apparaître."
 "$TF" -chdir="$INFRA_DIR" init -input=false >/dev/null
-"$TF" -chdir="$INFRA_DIR" apply -input=false -auto-approve
+"$TF" -chdir="$INFRA_DIR" apply -input=false -auto-approve 2>&1 | mask_output
 
 echo ">> 2/5 Kubeconfig et attente des nœuds"
 CLUSTER="$("$TF" -chdir="$INFRA_DIR" output -raw cluster_name)"
@@ -54,7 +54,7 @@ fi
 
 echo ">> 4/5 Pile d'observabilité (Mimir, Loki, Alloy, Grafana)"
 "$TF" -chdir="$STACK_DIR" init -input=false >/dev/null
-"$TF" -chdir="$STACK_DIR" apply -input=false -auto-approve -var "kubeconfig_path=$KUBECONFIG_FILE"
+"$TF" -chdir="$STACK_DIR" apply -input=false -auto-approve -var "kubeconfig_path=$KUBECONFIG_FILE" 2>&1 | mask_output
 
 echo ">> 5/5 Attente d'Open WebUI sur l'hôte (installation de Docker, téléchargement des images : plusieurs minutes)"
 WEBUI_URL="$("$TF" -chdir="$INFRA_DIR" output -raw webui_url)"
