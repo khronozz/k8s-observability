@@ -17,9 +17,34 @@ report() { # $1 = libellé, stdin = lignes trouvées
 }
 
 section "Ressources étiquetées Group=13 / Project=P5-monitoring-k8s-ai (API d'étiquettes)"
-aws resourcegroupstaggingapi get-resources --region "$REGION" \
+# L'index d'étiquettes garde parfois pendant plusieurs minutes des entrées de ressources déjà supprimées (constaté le
+# 26.10.2026 : 4 règles de groupe de sécurité listées après leur suppression). Pour les types EC2 courants on demande
+# donc à EC2 si la ressource existe encore ; sinon l'entrée est signalée comme périmée et ne compte pas.
+exists_ec2() { # $1 = type, $2 = identifiant ; 0 = existe ou indéterminé, 1 = n'existe plus
+  local out
+  case "$1" in
+    security-group-rule) out="$(aws ec2 describe-security-group-rules --region "$REGION" --security-group-rule-ids "$2" 2>&1)" ;;
+    security-group)      out="$(aws ec2 describe-security-groups --region "$REGION" --group-ids "$2" 2>&1)" ;;
+    vpc)                 out="$(aws ec2 describe-vpcs --region "$REGION" --vpc-ids "$2" 2>&1)" ;;
+    subnet)              out="$(aws ec2 describe-subnets --region "$REGION" --subnet-ids "$2" 2>&1)" ;;
+    route-table)         out="$(aws ec2 describe-route-tables --region "$REGION" --route-table-ids "$2" 2>&1)" ;;
+    internet-gateway)    out="$(aws ec2 describe-internet-gateways --region "$REGION" --internet-gateway-ids "$2" 2>&1)" ;;
+    volume)              out="$(aws ec2 describe-volumes --region "$REGION" --volume-ids "$2" 2>&1)" ;;
+    *) return 0 ;;
+  esac
+  printf '%s' "$out" | grep -q 'NotFound' && return 1
+  return 0
+}
+tagged="$(aws resourcegroupstaggingapi get-resources --region "$REGION" \
   --tag-filters Key=Group,Values=13 Key=Project,Values=P5-monitoring-k8s-ai \
-  --query 'ResourceTagMappingList[].ResourceARN' --output text 2>&1 | tr '\t' '\n' | sed -E 's/arn:aws:([a-z0-9-]+):[a-z0-9-]*:[0-9]*:/\1 : /' | report
+  --query 'ResourceTagMappingList[].ResourceARN' --output text 2>&1 | tr '\t' '\n')"
+while IFS= read -r arn; do
+  [ -n "$arn" ] || continue
+  short_arn="$(printf '%s' "$arn" | sed -E 's/arn:aws:([a-z0-9-]+):[a-z0-9-]*:[0-9]*:/\1 : /')"
+  if [[ "$arn" =~ ^arn:aws:ec2:[^:]*:[0-9]*:([a-z-]+)/(.+)$ ]] && ! exists_ec2 "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"; then
+    echo "   (entrée périmée de l'index, la ressource n'existe plus, ignorée : $short_arn)" >&2
+  else printf '%s\n' "$short_arn"; fi
+done <<<"$tagged" | report
 
 section "Clusters EKS"
 aws eks list-clusters --region "$REGION" --query "clusters[?starts_with(@, '$PREFIX')]" --output text 2>&1 | tr '\t' '\n' | report

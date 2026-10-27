@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     depends_on:
       assistant:
-        condition: service_healthy
+        condition: service_started # pas service_healthy : un assistant lent ou en erreur ne doit pas empêcher l'interface de démarrer
     ports:
       - "3000:8080"
     env_file:

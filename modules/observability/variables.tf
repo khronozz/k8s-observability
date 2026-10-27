@@ -169,3 +169,14 @@ variable "gateway_node_ports" {
   })
   default = {}
 }
+
+variable "helm_wait" {
+  description = <<-EOT
+    true (défaut, comportement historique) : OpenTofu attend que Mimir, Loki, Alloy et Grafana soient prêts, dans la limite
+    du délai de chaque version. false : OpenTofu rend la main dès l'installation lancée, et c'est le script (scripts/aws-up.sh)
+    qui attend l'état réel des pods. Intérêt : un délai dépassé marque la version « failed » dans l'état OpenTofu alors que les
+    pods finissent par démarrer (constaté le 24.10.2026), et la relance détruit puis recrée ces versions.
+  EOT
+  type        = bool
+  default     = true
+}

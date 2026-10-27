@@ -14,15 +14,16 @@ GARAGE_REF ?= ef6a03a4215e9a545945e6e34b43a185dd7b718a
 .PHONY: help preflight check-charts local-secrets local-up local-down garage-chart local-garage local-garage-init \
         local-assistant-image local-stack local-webui-config local-all local-credentials local-test pf-grafana pf-webui \
         switch-secrets switch-image switch-apply docs check-secrets \
-        aws-up aws-down aws-audit aws-allow-ip
+        aws-check aws-up aws-down aws-audit aws-allow-ip aws-redo-host
 
 help:
 	@echo "Local  : make local-all        (Kind + Garage + toute la pile, de zéro)"
 	@echo "         make local-credentials  (URL et identifiants Open WebUI / Grafana)"
 	@echo "         make local-down         (supprime le cluster et l'état OpenTofu local)"
-	@echo "AWS    : make aws-up           (EKS + S3 + pile d'observabilité ; ~0,48 \$$/h tant que ça tourne)"
+	@echo "AWS    : make aws-check        (vérification préalable, ne crée pas de cluster)"
+	@echo "         make aws-up           (EKS + S3 + pile d'observabilité ; ~0,48 \$$/h tant que ça tourne)"
 	@echo "         make aws-down         (détruit tout, puis audit)   make aws-audit   (lecture seule)"
-	@echo "         make aws-allow-ip     (autorise l'adresse IP actuelle)"
+	@echo "         make aws-allow-ip     (autorise l'adresse IP actuelle)   make aws-redo-host (refait seulement l'hôte EC2)"
 	@echo "Cloud (abandonné) : make switch-secrets, switch-image REGISTRY=..., switch-apply"
 	@echo "Autres : make preflight, make check-charts, make local-test, make check-secrets, make docs"
 
@@ -132,6 +133,12 @@ check-secrets:
 	@echo "check-secrets : rien de suspect (recherche par motifs, pas une preuve)."
 
 # --- AWS (EN COURS : non exécuté à ce jour) -----------------------------------------------------
+aws-check:
+	scripts/aws-preflight.sh
+
+aws-redo-host:
+	scripts/aws-redo-host.sh
+
 aws-up:
 	scripts/aws-up.sh
 

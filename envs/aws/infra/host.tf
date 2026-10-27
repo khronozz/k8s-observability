@@ -31,8 +31,24 @@ data "aws_instances" "eks_nodes" {
   depends_on = [module.eks]
 }
 
+# Deuxième méthode, indépendante de l'étiquette : les nœuds qui portent le groupe de sécurité des nœuds EKS, celui-là même
+# sur lequel s'ouvrent les ports 30090 et 30310. À VÉRIFIER aussi (jamais constaté) : le module doit l'attacher aux nœuds.
+# Si l'une des deux méthodes échoue, l'autre suffit ; l'apply ne s'arrête que si les deux ne trouvent rien.
+data "aws_instances" "eks_nodes_by_sg" {
+  filter {
+    name   = "instance.group-id"
+    values = [module.eks.node_security_group_id]
+  }
+  filter {
+    name   = "instance-state-name"
+    values = ["running"]
+  }
+  depends_on = [module.eks]
+}
+
 locals {
-  node_ip   = length(data.aws_instances.eks_nodes.private_ips) > 0 ? sort(data.aws_instances.eks_nodes.private_ips)[0] : ""
+  node_ips  = distinct(concat(data.aws_instances.eks_nodes.private_ips, data.aws_instances.eks_nodes_by_sg.private_ips))
+  node_ip   = length(local.node_ips) > 0 ? sort(local.node_ips)[0] : ""
   mimir_url = "http://${local.node_ip}:${var.gateway_node_ports.mimir}/prometheus"
   loki_url  = "http://${local.node_ip}:${var.gateway_node_ports.loki}"
 }
@@ -176,7 +192,7 @@ resource "aws_instance" "host" {
   lifecycle {
     precondition {
       condition     = local.node_ip != ""
-      error_message = "Aucun nœud EKS en cours d'exécution trouvé avec l'étiquette eks:cluster-name : impossible de fixer l'adresse de Mimir et Loki."
+      error_message = "Aucun nœud EKS en cours d'exécution trouvé (ni par l'étiquette eks:cluster-name, ni par le groupe de sécurité des nœuds) : impossible de fixer l'adresse de Mimir et Loki."
     }
   }
 }

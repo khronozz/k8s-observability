@@ -45,6 +45,11 @@ module "eks" {
       instance_types = [var.node_instance_type]
       ami_type       = "AL2023_x86_64_STANDARD"
 
+      # Lu dans le code du module v21.29.0 : par défaut (true) la version de l'image est relue à chaque apply, et dès qu'AWS
+      # en publie une nouvelle, le plan propose de remplacer les nœuds un par un (vu le 26.10.2026 : 1.35.9-20261019 ->
+      # 1.35.9-20261023). À false, un apply ne touche plus aux nœuds existants ; un nouveau cluster prend l'image courante.
+      use_latest_ami_release_version = false
+
       # Constaté le 23.10.2026 (premier essai) : avec la valeur par défaut du module (hop limit = 1), les pods ne
       # joignent pas le service de métadonnées des nœuds ("no EC2 IMDS role found") et le pilote de volumes EBS
       # reste en CrashLoopBackOff. Avec 2, tous les pods des nœuds peuvent lire les droits du rôle des nœuds :

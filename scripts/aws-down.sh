@@ -13,7 +13,8 @@ if [ "${1:-}" != "--yes" ]; then
 fi
 
 KUBE_OK=0
-if [ -f "$KUBECONFIG_FILE" ] && command -v kubectl >/dev/null && KUBECONFIG="$KUBECONFIG_FILE" kubectl get nodes >/dev/null 2>&1; then KUBE_OK=1; fi
+echo ">> 0/4 Accès à l'API du cluster (ajoute l'adresse IP actuelle si elle a changé)"
+if command -v kubectl >/dev/null && ensure_api_access; then KUBE_OK=1; fi
 
 if [ "$KUBE_OK" -eq 1 ]; then
   export KUBECONFIG="$KUBECONFIG_FILE"
@@ -24,12 +25,13 @@ if [ "$KUBE_OK" -eq 1 ]; then
       || echo "!! destroy de la pile en échec : on continue, l'audit final dira ce qui reste."
   fi
   echo ">> 2/4 Suppression des services LoadBalancer et des volumes persistants (évite des ressources orphelines)"
-  kubectl get svc -A --no-headers 2>/dev/null | awk '$3=="LoadBalancer"{print $1" "$2}' | while read -r ns n; do
-    kubectl delete svc -n "$ns" "$n" --wait=true || true; done
-  kubectl delete pvc --all -A --wait=true --timeout=300s || true
-  kubectl wait --for=delete pv --all --timeout=300s 2>/dev/null || true
+  kubectl --request-timeout=30s get svc -A --no-headers 2>/dev/null | awk '$3=="LoadBalancer"{print $1" "$2}' | while read -r ns n; do
+    kubectl delete svc -n "$ns" "$n" --wait=true --timeout=300s || true; done
+  kubectl delete pvc --all -A --wait=true --timeout=600s || true
+  kubectl wait --for=delete pv --all --timeout=600s 2>/dev/null || true
 else
-  echo "!! Cluster injoignable (ou kubeconfig absent) : étapes Helm et volumes ignorées. L'audit final dira ce qui reste."
+  echo "!! Cluster absent ou injoignable : étapes Helm et volumes ignorées. S'il existe, les volumes EBS créés par Kubernetes" >&2
+  echo "!! restent facturés (petits, mais réels) : l'audit final les listera." >&2
 fi
 
 echo ">> 3/4 Suppression de l'infrastructure (EKS, VPC, S3, IAM)"

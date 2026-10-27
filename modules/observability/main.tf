@@ -23,7 +23,7 @@ resource "helm_release" "mimir" {
   chart            = "mimir-distributed"
   version          = var.chart_versions.mimir
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/mimir.yaml.tftpl", {
     s3_endpoint   = var.s3_endpoint
@@ -44,7 +44,7 @@ resource "helm_release" "loki" {
   chart            = "loki"
   version          = var.chart_versions.loki
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/loki.yaml.tftpl", {
     s3_endpoint    = var.s3_endpoint
@@ -66,7 +66,7 @@ resource "helm_release" "k8s_monitoring" {
   chart            = "k8s-monitoring"
   version          = var.chart_versions.k8s_monitoring
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/k8s-monitoring.yaml.tftpl", {
     cluster_name  = var.cluster_name
@@ -85,7 +85,7 @@ resource "helm_release" "grafana" {
   chart            = "grafana"
   version          = var.chart_versions.grafana
   timeout          = 600
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/grafana.yaml.tftpl", {
     admin_password = var.grafana_admin_password

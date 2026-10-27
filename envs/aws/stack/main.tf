@@ -30,6 +30,7 @@ module "observability" {
 
   grafana_admin_password = var.grafana_admin_password
   loki_caches_enabled    = false
+  helm_wait              = false # le script aws-up.sh attend l'état réel des pods (voir variables.tf du module)
 
   deploy_chat_stack  = false
   gateway_node_ports = data.terraform_remote_state.infra.outputs.gateway_node_ports

@@ -39,11 +39,23 @@ Les images viennent du registre GitLab du projet (image `linux/amd64`, jeton de 
 ## Comment l'utiliser
 
 ```bash
-make aws-up        # crée tout (≈ 0,48 $/h pour le cluster) : lit .work/registry-token et envs/aws/infra/terraform.tfvars
-make aws-audit     # liste ce qui reste (lecture seule)
-make aws-down      # détruit tout, puis lance l'audit
-make aws-allow-ip  # ajoute l'adresse IP actuelle aux adresses autorisées (changement de lieu)
+make aws-check      # vérification préalable : droits, limites du compte, versions, registre, plan OpenTofu (ne crée pas de cluster)
+make aws-up         # crée tout (≈ 0,48 $/h pour le cluster) : lance d'abord la vérification, puis lit .work/registry-token et terraform.tfvars
+make aws-audit      # liste ce qui reste (lecture seule)
+make aws-down       # détruit tout, puis lance l'audit
+make aws-allow-ip   # ajoute l'adresse IP actuelle aux adresses autorisées (changement de lieu), sans rien appliquer d'autre
+make aws-redo-host  # refait SEULEMENT l'hôte EC2 si son démarrage a échoué (le cluster et les buckets restent)
 ```
+
+**Principe pour limiter les attentes inutiles** (décidé le 27.10.2026 après les essais des 23, 24 et 26.10) :
+- La vérification préalable (`aws-check`, lancée par `aws-up`) cherche en une à deux minutes ce qui ferait échouer le déploiement après 10 ou 20 minutes.
+  Elle crée puis supprime aussitôt quelques objets de test pour contrôler les droits d'écriture (paramètre SSM, rôle IAM, bucket S3). Elle ne peut pas vérifier
+  la création d'un cluster EKS, `iam:PassRole`, l'agent SSM de l'hôte, ni l'accès de l'hôte au registre depuis AWS : ces points se constatent au premier lancement.
+- `aws-up` peut être relancé après un échec : il reprend où il s'est arrêté. Les délais d'attente ne détruisent rien : OpenTofu n'attend plus Helm (variable
+  `helm_wait`), c'est le script qui attend l'état réel des pods (40 min au plus). Un délai dépassé laissait auparavant les composants « failed » dans l'état,
+  et la relance les détruisait pour les recréer.
+- Si seul l'hôte échoue, `aws-redo-host` le recrée en quelques minutes au lieu de tout détruire. Son script de démarrage réessaie chaque étape réseau
+  6 fois, annonce `G13-OK` ou `G13-ECHEC` dans la sortie console de l'instance, et `aws-up` s'arrête dès qu'il lit `G13-ECHEC`.
 
 Avant le premier lancement : copier `envs/aws/infra/terraform.tfvars.example` en `terraform.tfvars` et le compléter (`kubernetes_version`,
 `assistant_image`, `registry_username`), pousser l'image de l'assistant dans le registre (`docker buildx build --platform linux/amd64 ... --push`),
@@ -74,6 +86,9 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
   (autorisation sur le modèle), versions de Docker Compose et d'Open WebUI choisies, étiquette qui permet de retrouver les nœuds EKS, accès par session SSM.
 - Alloy et Grafana n'ont jamais été installés sur AWS ; l'écriture de Mimir et Loki dans S3 n'a pas été constatée (pods `Running`, mais aucune donnée relue).
 - Les durées de déploiement de Mimir et Loki avec Helm ; l'état des composants Helm marqués échoués (ils ont dépassé leur délai avant la classe de stockage).
+- Les correctifs du 27.10 (vérification préalable, attente des pods par le script, `aws-redo-host`, ciblage de `aws-allow-ip`, masquage des secrets) :
+  syntaxe contrôlée avec `shellcheck`, logique essayée contre de faux outils, **jamais exécutés contre AWS**. Pas non plus : le plan `tofu` avec les modifications de `eks.tf` et `host.tf`.
+- L'image d'Open WebUI (1,46 Go) a mis 12 min 44 s à se télécharger sur Kind (19.10) : sur l'hôte EC2, durée inconnue ; `aws-up` attend jusqu'à 25 min.
 - La mémoire réelle de l'hôte (`t3.small`, 2 Gio : Open WebUI occupait ≈ 0,7 Gio sur Kind, le reste n'est pas mesuré).
 - Crédits AWS restants et responsabilité de la facture (page des crédits : 0 $ de crédits visibles ; les étudiants ont été informés oralement que l'école paie ; le courriel du 15.10 ne le dit pas).
 - Les trois cas d'usage avec le vrai modèle : voir le [plan de tests](tests/plan-de-tests.md), aucun résultat encore. Les refus (hors sujet, actions, secrets) ont été essayés en local le 25.10, un essai par formulation.
@@ -85,6 +100,11 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
 - Sur macOS, `sed` retient la sortie dans un tube : utiliser `sed -l` ; `caffeinate -i` évite la mise en veille pendant les attentes longues.
 - Les sorties de commandes AWS peuvent contenir le numéro de compte, y compris dans les messages d'erreur : le masquer avant de coller quoi que ce soit.
 - Une destruction doit supprimer les volumes (PVC) **avant** le cluster, sinon des disques restent facturés.
+- L'API du cluster n'accepte que les adresses de `admin_cidrs` : après un changement de lieu, `kubectl` affiche « TLS handshake timeout » (constaté le 26.10). `aws-down` et `aws-allow-ip` ajoutent l'adresse actuelle seuls.
+- `tofu destroy` exige que toutes les variables obligatoires soient définies, y compris `registry_token` : `aws-down` en fournit une valeur sans effet (constaté le 26.10, avant correction).
+- Les sorties de `tofu` pour Helm affichent les clés d'accès S3 en clair : `aws-up`, `aws-down` et `aws-allow-ip` passent désormais tout par un filtre (`mask_output`).
+- L'index d'étiquettes d'AWS garde des ressources supprimées pendant plusieurs minutes : l'audit vérifie auprès d'EC2 avant de les compter.
+- Un apply peut proposer de remplacer les nœuds si AWS publie une nouvelle image : `use_latest_ami_release_version = false` (lu dans le code du module 21.29.0, effet non encore constaté).
 
 ## Coûts (prix à la demande, `us-east-1`, lus avec l'API de prix AWS le 22.10.2026)
 

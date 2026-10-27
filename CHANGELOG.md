@@ -2,6 +2,11 @@
 
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
+## 2026-10-27
+- Revue des scripts AWS pour éviter les échecs en cours de déploiement (décidée le 26.10) : `scripts/aws-preflight.sh` (`make aws-check`, lancé en premier par `aws-up`), attente des pods par le script (`helm_wait = false` pour la pile AWS, valeur par défaut inchangée pour le local), démarrage de l'hôte avec réessais, fichier d'échange et repères `G13-OK` / `G13-ECHEC`, `scripts/aws-redo-host.sh`, `aws-allow-ip.sh` limité au cluster et aux règles d'Open WebUI, `aws-down.sh` qui ajoute l'adresse IP actuelle avant `kubectl`, audit qui ignore les entrées périmées de l'index d'étiquettes. Contrôlés avec `shellcheck` et de faux outils ; **jamais exécutés contre AWS**.
+- Cause du retrait des droits du 24.10 : « suppression accidentelle de droits » touchant plusieurs groupes, selon l'assistant (message Teams du 26.10). CloudTrail ne montre aucune modification IAM faite par un autre compte dans la plage de 13:17 UTC (seul événement non lu : `GenerateCredentialReport` à 13:06 UTC, rôle assumé). Droits d'écriture constatés le 26.10 : destruction réussie de 60 ressources (EKS, VPC, EC2, groupes de sécurité, IAM, S3) ; la création n'a pas été reprise depuis.
+- Destruction du cluster de test du 24.10 (26.10) : nœuds 8 min 9 s, passerelle Internet 6 min 39 s, cluster 3 min 40 s ; audit sans reste (quatre entrées périmées de l'index d'étiquettes, confirmées inexistantes).
+
 ## 2026-10-25
 - Documents mis à jour : guide (sections 6.10 à 6.13, calendrier, décisions), architecture v2 (état réel), déroulé de la démonstration (`docs/demo/deroule-demonstration.md`, écrit avant les essais).
 - `scripts/run_scenarios.py` : pose les questions de refus (S1, S2, S4, S6) à l'assistant et note les réponses ; testé seulement contre un faux serveur. Scénario S6 ajouté au plan de tests (13 scénarios).
