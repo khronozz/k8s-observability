@@ -73,18 +73,25 @@ def compact_logs(data: dict) -> str:
 _K8S_NAME = re.compile(r"^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$")
 
 
-def build_logql(namespace: str, pod_prefix: str = "", contains: str = "") -> str:
+def build_logql(namespace: str, pod_prefix: str = "", contains: str = "", pod_exact: str = "") -> str:
     """Construit le sélecteur LogQL à partir de paramètres : le modèle ne l'écrit plus lui-même. Constat du
     16.10.2026 : en écriture libre il cherchait dans tous les namespaces (`{namespace!=""}`) malgré une question
-    sur Mimir. Ici le namespace est obligatoire et validé."""
+    sur Mimir. Ici le namespace est obligatoire et validé.
+
+    Le pod est filtré APRÈS le sélecteur (`| pod=~"..."`) et non dans les accolades : constaté le 27.10.2026 sur AWS,
+    `{namespace="test-incident", pod="appli-demo"}` renvoyait 0 ligne alors que `{namespace="test-incident"} | pod="appli-demo"`
+    en renvoyait 5 (cause non établie). Le filtre en pipeline fonctionne que le champ soit indexé ou non."""
     if not _K8S_NAME.match(namespace or ""):
         raise ValueError(f"namespace invalide : {namespace!r}")
-    sel = f'namespace="{namespace}"'
-    if pod_prefix:
+    q = '{namespace="' + namespace + '"}'
+    if pod_exact:
+        if not _K8S_NAME.match(pod_exact):
+            raise ValueError(f"nom de pod invalide : {pod_exact!r}")
+        q += f' | pod="{pod_exact}"'
+    elif pod_prefix:
         if not _K8S_NAME.match(pod_prefix):
             raise ValueError(f"préfixe de pod invalide : {pod_prefix!r}")
-        sel += f', pod=~"{pod_prefix.replace(".", "[.]")}.*"'
-    q = "{" + sel + "}"
+        q += f' | pod=~"{pod_prefix.replace(".", "[.]")}.*"'
     if contains:
         text = contains.replace("`", "")   # chaîne brute entre accents graves : pas d'échappement à gérer
         q += f" |~ `(?i){re.escape(text)}`"   # insensible à la casse, texte littéral (pas une regex libre)

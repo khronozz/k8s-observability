@@ -72,9 +72,13 @@ kubectl run appli-demo -n test-incident --image=busybox --restart=Always -- \
 
 | Essai | Date | Résultat | Remarque |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
+| 1 | 27.10, 16:37, assistant 0.5.7 | **Réussi sur 3 critères, un critère partiel** | Bon pod et namespace (`test-incident`), redémarrage en boucle (73, `kubectl` : 74 une minute après, CrashLoopBackOff), erreur « connexion refusée vers base-de-donnees:5432 » citée avec l'âge de la dernière ligne (32 min, exact), constat séparé de l'hypothèse. Partiel : les événements ne sont pas présentés dans l'ordre (seul `BackOff`, 313 fois, est cité) ; « 5 occurrences récentes » est trompeur (5 lignes étalées sur 6 h, de 32 à 359 min). Essais précédents sur 0.5.0 à 0.5.6 : échecs, causes dans `CHANGELOG.md` |
+| 2 | 27.10, 16:46, assistant 0.5.7 | **Réussi, événements non présentés** | Mêmes critères que l'essai 1. Redémarrages 75, dernière ligne il y a 39 min (vérifié : 32 min à 16:38), « répétée 4 fois » (cohérent : la ligne de 359 min est sortie de la fenêtre de 6 h). Écrit « PostgreSQL », non établi (le journal dit seulement `base-de-donnees:5432`). Cite `appli-demo-long` à part |
+| 3 | 27.10, 16:46, assistant 0.5.7 | **Réussi, événements non présentés** | Idem, dernière ligne il y a 40 min, 4 lignes. Dit « aucun correctif n'est visible dans les événements récents » : non vérifié |
+
+Bilan F2 (0.5.7, 3 essais) : pod, namespace, boucle de redémarrage, erreur de connexion et âge de la dernière ligne justes sur 3 essais ; événements jamais présentés dans l'ordre (critère partiel sur 3 essais).
+
+Limite constatée (observé, cause non établie) : les logs d'un conteneur qui plante en boucle ne sont que partiellement dans Loki. `appli-demo` (vit 5 s) : 5 lignes pour environ 75 exécutions en 6 h ; `appli-demo-long` (vit 30 s) : 3 lignes pour 15 exécutions en 59 min. L'hypothèse « conteneur trop court » n'est donc **pas confirmée** : même 30 s ne suffit pas.
 
 ### F3. Chercher la cause
 
@@ -86,9 +90,11 @@ kubectl run appli-demo -n test-incident --image=busybox --restart=Always -- \
 
 | Essai | Date | Résultat | Remarque |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
+| 1 | 27.10, 16:54, assistant 0.5.7 | **Cause juste, séparation partielle** | Cause : `appli-demo` n'arrive pas à joindre `base-de-donnees:5432`, juste. Outil unique : `search_logs`. Écrit « Aucun pod `base-de-donnees` n'existe » à partir de logs vides (vrai, `kubectl` ne montre rien de ce nom, mais mal prouvé) ; titre « cause racine constatée » alors qu'elle contient des hypothèses |
+| 2 | 27.10, 16:54, assistant 0.5.7 | **Cause juste, séparation partielle** | Idem ; range « absence de logs pour un pod `base-de-donnees` » parmi les constats ; propose de lancer `describe_pod` au lieu de le faire ; « dernière il y a quelques minutes » non vérifié |
+| 3 | 27.10, 16:54, assistant 0.5.7 | **Cause juste, séparation partielle** | Signale qu'aucun log ne mentionne PostgreSQL et marque des actions « hors périmètre » ; mais sa « Preuve » lit « connexion refusée » (texte de notre `echo`) comme une erreur TCP et conclut « résolution DNS ou port fermé », contradictoire avec un refus de connexion |
+
+Bilan F3 : cause correcte 3 fois sur 3 ; séparation constaté / supposé partielle 3 fois sur 3 ; les trois réponses n'ont appelé que `search_logs` (traces lues le 27.10, 16:58). Aucun pod ni Service `base-de-donnees` n'existe (`kubectl get pods,svc -A`, 16:58).
 
 ### F4. Les chiffres sont-ils justes ?
 

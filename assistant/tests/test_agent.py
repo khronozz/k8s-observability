@@ -69,7 +69,8 @@ def test_llm_stats_from_metadata():
 def test_build_logql_scoped_and_escaped():
     assert ag.build_logql("mimir") == '{namespace="mimir"}'
     q = ag.build_logql("mimir", "mimir-compactor", "status=failed")
-    assert q == '{namespace="mimir", pod=~"mimir-compactor.*"} |~ `(?i)status=failed`'
+    assert q == '{namespace="mimir"} | pod=~"mimir-compactor.*" |~ `(?i)status=failed`'
+    assert ag.build_logql("mimir", pod_exact="mimir-ruler-1") == '{namespace="mimir"} | pod="mimir-ruler-1"'
 
 
 def test_build_logql_rejects_injection():

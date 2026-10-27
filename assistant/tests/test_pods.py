@@ -1,5 +1,6 @@
 """describe_pod : le namespace vient des métriques du pod, les logs sont cherchés dedans (cas F2 du 27.10.2026)."""
 import json
+import time
 
 import pytest
 
@@ -30,22 +31,61 @@ def _fake_metrics(found=True):
     return fake
 
 
+def _logs_data(ts, line):
+    return {"data": {"result": [{"stream": {"namespace": "test-incident", "pod": "appli-demo", "container": "appli-demo"},
+                                 "values": [[ts, line]]}]}}
+
+
+EVENT_LINE = ('name=appli-demo kind=Pod reason=BackOff type=Warning count=267 '
+              'msg="Back-off restarting failed container appli-demo in pod appli-demo_test-incident(1941d9e0)" ')
+
+
 def test_describe_pod_searches_logs_in_the_pods_own_namespace(monkeypatch):
-    seen = {}
+    queries = []
+    now_ns = str(int(time.time() * 1e9))
 
     def logs(q, minutes, limit):
-        seen["q"] = q
-        return {"data": {"result": [{"stream": {"namespace": "test-incident", "pod": "appli-demo", "container": "appli-demo"},
-                                     "values": [["1793095458000000000", "erreur : connexion refusee vers base-de-donnees:5432"]]}]}}
+        queries.append((q, minutes))
+        if "eventhandler" in q:
+            return _logs_data(now_ns, EVENT_LINE)
+        return _logs_data(now_ns, "erreur : connexion refusee vers base-de-donnees:5432")
     monkeypatch.setattr(clients, "metrics_instant", _fake_metrics())
     monkeypatch.setattr(clients, "logs_range", logs)
     res = pods.describe_pod("appli-demo")
     p = res["pods"][0]
-    assert seen["q"].startswith('{namespace="test-incident", pod=~"appli-demo.*"}')
+    assert queries[0][0].startswith('{namespace="test-incident"} | pod="appli-demo"') and queries[0][1] == 30
+    assert queries[1][0].startswith('{namespace="test-incident"} | job="integrations/kubernetes/eventhandler" | name="appli-demo"')
     assert p["namespace"] == "test-incident" and p["phase"] == "Running" and p["pret"] is False
     assert p["redemarrages_total"] == 10 and p["redemarrages_10_dernieres_min"] == 2
     assert p["derniere_terminaison"] == "Error" and p["attente_10_dernieres_min"] == ["CrashLoopBackOff"]
     assert "connexion refusee vers base-de-donnees:5432" in p["logs_recents"]
+    assert p["derniere_ligne_de_log_il_y_a_min"] == 0 and p["logs_fenetre_minutes"] == 30
+    ev = p["evenements"][0]
+    assert ev["raison"] == "BackOff" and ev["type"] == "Warning" and ev["fois"] == 267 and "Back-off restarting" in ev["message"]
+
+
+def test_describe_pod_widens_the_log_window_and_reports_the_age_of_the_last_line(monkeypatch):
+    old_ns = str(int((time.time() - 64 * 60) * 1e9))
+    calls = []
+
+    def logs(q, minutes, limit):
+        calls.append(minutes)
+        if "eventhandler" in q:
+            return {"data": {"result": []}}
+        return {"data": {"result": []}} if minutes == 30 else _logs_data(old_ns, "erreur : connexion refusee vers base-de-donnees:5432")
+    monkeypatch.setattr(clients, "metrics_instant", _fake_metrics())
+    monkeypatch.setattr(clients, "logs_range", logs)
+    p = pods.describe_pod("appli-demo")["pods"][0]
+    assert calls[:2] == [30, 360] and p["logs_fenetre_minutes"] == 360
+    assert p["derniere_ligne_de_log_il_y_a_min"] in (63, 64) and "connexion refusee" in p["logs_recents"]
+    assert p["evenements"] == []
+
+
+def test_describe_pod_says_when_no_log_line_exists_at_all(monkeypatch):
+    monkeypatch.setattr(clients, "metrics_instant", _fake_metrics())
+    monkeypatch.setattr(clients, "logs_range", lambda q, m, l: {"data": {"result": []}})
+    p = pods.describe_pod("appli-demo")["pods"][0]
+    assert p["logs_recents"] == "aucune ligne" and "non vérifiée" in p["logs_note"]
 
 
 def test_describe_pod_unknown_pod_says_so(monkeypatch):
