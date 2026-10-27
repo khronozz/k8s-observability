@@ -79,12 +79,16 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
 | 24.10, 15h17 | Droits IAM et EKS retirés pour l'utilisateur | `AccessDenied` (« no identity-based policy allows... ») pour IAM et EKS ; Bedrock et l'identité restent utilisables. Cause inconnue ; demande envoyée dans le canal Teams du cours. Constaté encore le 25.10 à 00h32 |
 | 25.10 | Bedrock après le retrait des droits | appel du modèle `mistral.mistral-large-3-675b-instruct` réussi (11 tokens). Ce modèle n'apparaît pas dans la liste filtrée par fournisseur Mistral (cause inconnue) |
 | 25.10 | Registre GitLab | image de l'assistant poussée en `linux/amd64` et vérifiée dans le registre |
+| 26.10 | Droits d'écriture après leur retour | destruction réussie de 60 ressources (EKS, VPC, EC2, groupes de sécurité, IAM, S3) ; nœuds 8 min 9 s, passerelle Internet 6 min 39 s, cluster 3 min 40 s |
+| 27.10 | Vérification préalable (`aws-preflight.sh`) | 49 contrôles ok, 0 échec, 3 à surveiller, 41 s ; `tofu validate` sur les deux environnements et plan de 70 ressources sans erreur |
+| 27.10 | Premier déploiement complet avec l'hôte EC2 | **19 min 12 s** au total : infrastructure ≈ 14 min 45 s, pile ≈ 3 min 20 s, hôte déjà prêt à l'attente. Hôte : `G13-OK` 179 s après son démarrage ; image de l'assistant tirée du registre HEFR depuis AWS en 137 s, image d'Open WebUI (1,46 Go) en 174 s. 40 pods `Running`, 10 volumes liés, Open WebUI répond |
+| 27.10 | Chaîne complète depuis AWS | question « Comment va mon cluster ? » posée dans Open WebUI : l'assistant appelle Bedrock avec le rôle de l'instance, interroge Mimir et Loki par les NodePort et répond (réponse partiellement fausse : voir [plan de tests](tests/plan-de-tests.md), F1) |
+| 27.10 | Données dans Mimir (requêtes directes par `port-forward`) | `sum(kube_pod_status_phase{phase="Running"})` = 40 (= kubectl) ; `count(up == 1)` = 8 ; 62 séries `container_memory_working_set_bytes` ; **0** série `node_memory_MemAvailable_bytes` et **0** série `cluster:namespace:pods:running` |
 
 ## Ce qui n'est pas vérifié
 
-- **L'hôte EC2** n'a jamais été lancé : accès au registre depuis AWS, lecture des secrets dans SSM, appel de Bedrock depuis le rôle de l'instance
-  (autorisation sur le modèle), versions de Docker Compose et d'Open WebUI choisies, étiquette qui permet de retrouver les nœuds EKS, accès par session SSM.
-- Alloy et Grafana n'ont jamais été installés sur AWS ; l'écriture de Mimir et Loki dans S3 n'a pas été constatée (pods `Running`, mais aucune donnée relue).
+- **L'hôte EC2** : constaté le 27.10 qu'il démarre, lit ses secrets dans SSM, tire les images depuis le registre HEFR et ghcr.io, et que l'assistant appelle Bedrock avec le rôle de l'instance. Pas encore vérifiés : l'accès par session SSM (agent, droits `ssm:StartSession`, `session-manager-plugin`), la mémoire réelle, laquelle des deux recherches de nœud a trouvé l'adresse.
+- Alloy et Grafana sont installés sur AWS depuis le 27.10 (pods `Running`) ; l'écriture de Mimir et Loki dans S3 n'a pas été constatée (aucun objet relu dans les buckets).
 - Les durées de déploiement de Mimir et Loki avec Helm ; l'état des composants Helm marqués échoués (ils ont dépassé leur délai avant la classe de stockage).
 - Les correctifs du 27.10 (vérification préalable, attente des pods par le script, `aws-redo-host`, ciblage de `aws-allow-ip`, masquage des secrets) :
   syntaxe contrôlée avec `shellcheck`, logique essayée contre de faux outils, **jamais exécutés contre AWS**. Pas non plus : le plan `tofu` avec les modifications de `eks.tf` et `host.tf`.

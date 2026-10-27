@@ -45,7 +45,13 @@ Ce sont les trois cas d'usage demandés dans le projet, plus un contrôle des ch
 
 | Date | Résultat | Remarque |
 |---|---|---|
-|  |  |  |
+| 27.10, AWS, assistant 0.5.0, essai 1 | **Partiellement faux** | Nœuds : 2 Ready, correct. Pods : « 0 pod en cours » alors que Mimir et kubectl en comptent 40 (le modèle a inventé une métrique, 0 série). « Mémoire et CPU indisponibles » alors que 62 séries de mémoire existent. Erreurs 502 vers Mimir présentées comme critiques, probablement du bruit de démarrage (hypothèse). Capture et vérité dans `docs/tests/resultats/2026-10-27-aws-f1-essai1.md`. À rejouer avec 0.5.1 |
+| 27.10, 09:54, assistant 0.5.1, essai 2 | **Presque juste** | Nœuds, pods, mémoire corrects. Défaut : des « requêtes en échec » dans Loki, en réalité ses journaux de nos propres requêtes (63 lignes, 0 après exclusion). Corrigé en 0.5.2 |
+| 27.10, 10:25, assistant 0.5.2, essai 3 | **Juste, une omission** | 40 pods, 2 nœuds, 13 redémarrages : exacts (somme relevée avec `kubectl` : 3+2+2+3+3, arrêts à 09:21 heure locale, au démarrage). Loki « aucun problème » alors que 4 lignes d'erreur du canary datent de 10:21 : omission non expliquée. Mimir : 1 avertissement ancien |
+| 27.10, 10:28, assistant 0.5.2, essai 4 | **Juste** | Mêmes chiffres. Loki : 4 erreurs `tail max duration limit` (lignes relevées dans `loki-0` et `loki-canary`, 10:21 : exactes). Présentées « en cours » alors que le canary se reconnecte seul : comportement normal, formulation trompeuse |
+| 27.10, 10:32, assistant 0.5.2, essai 5 | **Juste** | Mêmes chiffres, cite les requêtes utilisées. Loki : mêmes 4 lignes, « peut-être résolu ». Le détail « contexte annulé » n'a pas été retrouvé dans les lignes relevées (non vérifié) |
+
+Constats F1 sur AWS : chiffres de pods, nœuds et redémarrages justes sur 3 essais avec 0.5.2 ; kube-system toujours signalé (≈185 lignes, erreurs de l'`ebs-csi-controller` sur les ressources de snapshot, aucun effet constaté : 10 volumes `Bound`) ; le contenu Loki/Mimir varie d'un essai à l'autre (1 omission sur 3).
 
 ### F2. Décrire un incident
 

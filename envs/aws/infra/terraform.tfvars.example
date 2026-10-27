@@ -5,5 +5,5 @@ kubernetes_version = "X.YY"
 admin_cidrs = ["A.B.C.D/32"]
 # Hôte EC2 (assistant + Open WebUI) : image poussée dans le registre GitLab (linux/amd64) et jeton de déploiement.
 # Le JETON ne va jamais ici : voir scripts/aws-up.sh (.work/registry-token).
-assistant_image   = "registry.forge.hefr.ch/<utilisateur>/k8s-observability/assistant:0.5.0"
+assistant_image   = "registry.forge.hefr.ch/<utilisateur>/k8s-observability/assistant:0.5.5"
 registry_username = "gitlab+deploy-token-NNN"
