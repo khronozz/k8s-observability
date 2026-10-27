@@ -108,3 +108,17 @@ def test_describe_pod_is_a_tool_and_the_prompt_asks_for_it(monkeypatch):
     monkeypatch.setattr(clients, "metrics_instant", _fake_metrics())
     monkeypatch.setattr(clients, "logs_range", lambda q, m, l: {"data": {"result": []}})
     assert json.loads(agent.describe_pod.invoke({"pod_prefix": "appli-demo"}))["trouve"] is True
+
+
+def test_describe_pod_events_come_oldest_first(monkeypatch):
+    now = time.time()
+    ev = lambda age_min, reason, msg: [str(int((now - age_min * 60) * 1e9)),
+                                       f'name=appli-demo reason={reason} type=Normal count=1 msg="{msg}" ']
+    data = {"data": {"result": [{"stream": {}, "values": [ev(1, "BackOff", "b"), ev(30, "Pulling", "p"), ev(29, "Started", "s")]}]}}
+    monkeypatch.setattr(clients, "metrics_instant", _fake_metrics())
+    monkeypatch.setattr(clients, "logs_range", lambda q, m, l: data if "eventhandler" in q else {"data": {"result": []}})
+    p = pods.describe_pod("appli-demo")["pods"][0]
+    assert [e["raison"] for e in p["evenements"]] == ["Pulling", "Started", "BackOff"]
+    assert "plus ancien" in p["evenements_ordre"]
+    assert p["chronologie_texte"].startswith("il y a 30 min : Pulling (Normal, routine) → il y a 29 min : Started")
+    assert p["chronologie_texte"].endswith("il y a 1 min : BackOff (Normal, routine)")

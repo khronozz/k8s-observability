@@ -216,3 +216,34 @@ def test_chat_does_not_retry_a_refusal_or_an_answer_that_used_a_tool():
 def test_prompt_says_context_does_not_list_pods():
     from app import agent
     assert "ne liste PAS les pods" in agent.SYSTEM_PROMPT
+
+
+def _tool_named(name, text):
+    from langchain_core.messages import AIMessage, ToolMessage
+    return [AIMessage(content="", tool_calls=[{"name": name, "args": {}, "id": "t9"}]),
+            ToolMessage(content="ok", tool_call_id="t9"), AIMessage(content=text)]
+
+
+def test_chat_retries_when_a_pod_absence_is_proved_only_by_logs(capsys):
+    """F3 du 27.10.2026 : « Aucun pod `base-de-donnees` n'existe », tiré de recherches de logs vides."""
+    from app import agent
+    fake = _SeqAgent([_tool_named("search_logs", "Aucun pod `base-de-donnees` n'existe."),
+                      _tool_named("describe_pod", "Pas de pod base-de-donnees (describe_pod : trouve=false).")])
+    res = agent.chat([("user", "Analyse de cause racine ?")], agent=fake)
+    assert len(fake.calls) == 2 and "describe_pod" in fake.calls[1][-1][1] and "trouve=false" in res["answer"]
+
+
+def test_chat_keeps_a_pod_absence_proved_by_metrics_or_unrelated_wording():
+    from app import agent
+    prouve = _SeqAgent([_tool_named("describe_pod", "Aucun pod `base-de-donnees` n'existe (describe_pod).")])
+    agent.chat([("user", "q")], agent=prouve)
+    assert len(prouve.calls) == 1
+    autre = _SeqAgent([_tool_named("find_problems_in_namespace", "Aucun pod en échec dans mimir.")])
+    agent.chat([("user", "q")], agent=autre)
+    assert len(autre.calls) == 1
+
+
+def test_prompt_demands_findings_and_hypotheses_and_forbids_proof_by_empty_logs():
+    from app import agent
+    assert "« Constats »" in agent.SYSTEM_PROMPT and "« Hypothèses »" in agent.SYSTEM_PROMPT
+    assert "ne prouvent PAS" in agent.SYSTEM_PROMPT and "`chronologie_texte`" in agent.SYSTEM_PROMPT and "routine" in agent.SYSTEM_PROMPT

@@ -9,9 +9,11 @@ il ajoute un contrôle automatique simple (aucun outil appelé) ; la décision �
 dans la colonne « Jugement ». Utilise seulement la bibliothèque standard.
 """
 import argparse
+import contextlib
 import datetime
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -69,6 +71,8 @@ def main():
     ap.add_argument("--base", default="http://localhost:8000")
     ap.add_argument("--label", default="local-bedrock", help="environnement, utilisé dans le nom du fichier")
     ap.add_argument("--repeat", type=int, default=1)
+    ap.add_argument("--stdout", action="store_true", help="écrit le tableau sur la sortie standard au lieu d'un fichier "
+                                                           "(utilisé sur l'hôte AWS, où le dépôt n'existe pas)")
     a = ap.parse_args()
 
     ids = a.ids or list(SCENARIOS)
@@ -77,11 +81,13 @@ def main():
         raise SystemExit(f"scénario inconnu : {unknown} (connus : {list(SCENARIOS)})")
 
     now = datetime.datetime.now()
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "tests", "resultats")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"{now:%Y-%m-%d}-{a.label}.md")
-    new = not os.path.exists(path)
-    with open(path, "a", encoding="utf-8") as f:
+    path, new = "", True
+    if not a.stdout:
+        out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "tests", "resultats")
+        os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, f"{now:%Y-%m-%d}-{a.label}.md")
+        new = not os.path.exists(path)
+    with (contextlib.nullcontext(sys.stdout) if a.stdout else open(path, "a", encoding="utf-8")) as f:
         if new:
             f.write(f"# Résultats : {a.label}, {now:%Y-%m-%d}\n\n")
             f.write("Notés par `scripts/run_scenarios.py`. La colonne « Jugement » est à remplir à la main.\n")
@@ -94,15 +100,16 @@ def main():
                     res, dur, err = ask(a.base, q)
                     if err:
                         f.write(f"| {cell(q)} | ERREUR : {cell(err)} |  |  |  | {dur:.1f} s |  |\n")
-                        print(f"{sid} ERREUR  {q[:50]}")
+                        print(f"{sid} ERREUR  {q[:50]}", file=sys.stderr if a.stdout else sys.stdout)
                         continue
                     tools = [t["tool"] for t in res.get("tool_calls", [])]
                     tin = sum(c.get("prompt_tokens") or 0 for c in res.get("llm_calls", []))
                     tout = sum(c.get("output_tokens") or 0 for c in res.get("llm_calls", []))
                     auto = ("aucun outil appelé : " + ("oui" if not tools else "NON")) if no_tool else ""
                     f.write(f"| {cell(q)} | {cell(res.get('answer', ''))} | {cell(', '.join(tools) or '-')} | {auto} | {tin}/{tout} | {dur:.1f} s |  |\n")
-                    print(f"{sid} ok      {q[:50]}  outils={tools or '-'}")
-    print("Résultats :", os.path.normpath(path))
+                    print(f"{sid} ok      {q[:50]}  outils={tools or '-'}", file=sys.stderr if a.stdout else sys.stdout)
+    if not a.stdout:
+        print("Résultats :", os.path.normpath(path))
 
 
 if __name__ == "__main__":

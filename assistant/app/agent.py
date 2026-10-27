@@ -242,6 +242,18 @@ Règles :
   namespace (« default »). Dis ce qu'il renvoie : prêt ou non, redémarrages (total et des 10 dernières minutes), raison
   d'attente ou d'arrêt, et cite l'erreur des logs recents telle qu'elle est écrite. « Running » ne veut pas dire sain.
   Sépare ce que tu as constaté (outil) de ce que tu supposes (cause).
+- Cause racine ou « pourquoi » sur un pod : appelle describe_pod, même s'il a déjà été appelé plus tôt dans la
+  conversation (les valeurs changent), puis search_logs si utile. Présente deux parties : « Constats » (uniquement ce
+  qu'un outil a renvoyé, avec l'âge des lignes) et « Hypothèses » (tout le reste, à vérifier). N'écris jamais
+  « constaté » ni « preuve » pour une déduction. Pour un pod, recopie TELLE QUELLE la phrase `chronologie_texte` (déjà
+  du plus ancien au plus récent). Les événements de type Normal (Pulling, Pulled, Created, Started) sont de la routine :
+  ne les présente jamais comme un échec ; seul un événement Warning (BackOff...) signale un problème. Ne dis jamais à
+  l'utilisateur d'appeler tes propres outils : fais-le toi-même ; ses actions suggérées sont les siennes (kubectl, corriger la
+  configuration). Une analyse de cause racine tient en 180 mots maximum.
+- Des logs vides ne prouvent PAS qu'un pod, un service ou une base n'existe pas : seul describe_pod (`trouve`) ou une
+  métrique le prouve. Un nom cité dans une erreur (hôte, base) n'est pas forcément un pod. Ne nomme une technologie
+  (PostgreSQL...) que si un outil la mentionne. Le texte d'un message de log est écrit par l'application : n'en déduis ni
+  le protocole réseau ni une cause DNS.
 - Pour lire des logs précis, search_logs dans SON namespace uniquement ; ne cite que des lignes du namespace demandé.
 - Réponds en 120 mots maximum, sans recopier de longues lignes de logs.
 - Une valeur de métrique n'est pas une durée ni un maximum : n'ajoute pas d'interprétation que la requête ne mesure pas.
@@ -324,6 +336,10 @@ def tool_trace(msgs) -> list[dict]:
 
 
 UNVERIFIED_CLAIM = re.compile(r"(?i)(vérifications? effectuée|vérifié|aucune donnée|n'existe pas|n'existent pas|aucun pod|introuvable|n'ai aucun)")
+# Affirmation qu'un POD n'existe pas / est absent (F3 du 27.10.2026 : prouvée par des logs vides, qui ne prouvent rien).
+POD_ABSENCE = re.compile(r"(?i)((aucun|pas de) pod\s*(`|\*\*|nommé|de ce nom|dont le nom|appelé)|n'existe aucun pod|"
+                         r"pod\s*`[^`]+`\s*(\*\*)?\s*(n'existe pas|est absent|absent))")
+EVIDENCE_TOOLS = {"describe_pod", "promql_instant", "promql_range"}   # outils qui peuvent prouver l'existence d'un pod
 
 
 def chat(turns: list[tuple[str, str]], agent=None) -> dict:
@@ -336,11 +352,18 @@ def chat(turns: list[tuple[str, str]], agent=None) -> dict:
     # Garde-fou : constaté le 27.10.2026, le modèle a affirmé « vérifications effectuées : aucun pod de ce nom » sans appeler
     # aucun outil (le pod existait). Si la réponse affirme une absence ou une vérification sans qu'un outil ait été appelé,
     # on redemande UNE fois en exigeant une interrogation de Mimir ou de Loki.
-    if not tool_trace(msgs) and UNVERIFIED_CLAIM.search(text_of(msgs[-1].content)):
-        retried = True
+    used = {c["tool"] for c in tool_trace(msgs)}
+    answer0 = text_of(msgs[-1].content)
+    nudge = None
+    if not used and UNVERIFIED_CLAIM.search(answer0):
         nudge = ("Tu n'as appelé aucun outil, donc ton affirmation n'est pas vérifiée. Interroge Mimir ou Loki avec un outil "
                  "(sans filtre de namespace si le namespace n'est pas connu), puis réponds en t'appuyant sur le résultat.")
-        res = agent.invoke({"messages": turns + [("assistant", text_of(msgs[-1].content)), ("user", nudge)]}, config=cfg)
+    elif POD_ABSENCE.search(answer0) and not (used & EVIDENCE_TOOLS):
+        nudge = ("Tu affirmes qu'un pod n'existe pas sans l'avoir vérifié avec describe_pod ou une requête de métriques ; des "
+                 "logs vides ne prouvent rien. Vérifie avec describe_pod, puis corrige ta réponse.")
+    if nudge:
+        retried = True
+        res = agent.invoke({"messages": turns + [("assistant", answer0), ("user", nudge)]}, config=cfg)
         msgs = res["messages"]
     out = {"answer": text_of(msgs[-1].content), "tool_calls": tool_trace(msgs), "llm_calls": llm_stats(msgs)}
     # Trace dans la sortie standard (`docker logs`) : sans elle, on ne voit pas ce que l'agent a réellement interrogé

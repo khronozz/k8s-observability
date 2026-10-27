@@ -132,4 +132,13 @@ def _add_events(p: dict) -> None:
                        "fois": int(m.group(3)) if m.group(3) else None, "message": m.group(4)[:160]})
         if len(events) >= _EVENTS_MAX:
             break
-    p["evenements"] = events
+    # Du plus ancien au plus récent (dernière occurrence de chaque raison) : le critère F2 demande des événements « dans l'ordre ».
+    ordered = list(reversed(events))
+    p["evenements"] = ordered
+    p["evenements_ordre"] = "du plus ancien au plus récent (dernière occurrence de chaque raison)"
+    if ordered:
+        # Phrase prête à recopier. Constaté le 27.10.2026 : le modèle a lu les `Pulling` répétés (type Normal, routine) comme
+        # un échec de téléchargement alors que `Pulled` (succès) n'apparaît qu'une fois, Kubernetes regroupant les événements.
+        p["chronologie_texte"] = " → ".join(
+            f"il y a {e['il_y_a_min']} min : {e['raison']} ({e['type']}, " + ("routine" if e["type"] == "Normal" else "anormal") + ")"
+            for e in ordered)
