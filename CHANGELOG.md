@@ -4,6 +4,8 @@ Format : date, changement, preuve ou référence. Seuls les faits constatés son
 
 ## 2026-10-27
 
+- **Script de la vidéo de démonstration (29.10)** : `docs/demo/script-video.md` en trois phases (accès, préparation, tournage) pour Malik, avec les captures du 28.10 comme repères. Deux scripts sans OpenTofu : `scripts/demo-check.sh` (contrôle en lecture seule) et `scripts/demo-fix.sh` (entrée d'accès EKS, adresse IP sur l'API et sur Open WebUI). **Testés seulement avec de faux `aws`, `kubectl` et `curl`** : jamais avec le vrai compte AWS de Malik. `deroule-demonstration.md` : note sur la vidéo.
+
 - **Rapport de 2 pages (template du professeur reçu le 28.10)** : `docs/rapport/Report-Group13-en.docx` (version à rendre) et `-fr.docx`, avec leurs PDF. Tableau des tâches établi d'après l'historique Git (39 commits Nicolas, 2 Malik, 1 Khalil) et le rapport de la partie 2 (SWITCHengines). Lien de la vidéo : à compléter.
 
 - **Document d'architecture v4 (28.10)** : ajoute la section 2 « Exigences » (18 exigences : 5 satisfaites, 8 avec réserve, 5 partielles, avec origine, preuve et réserves tirées de `docs/tests/plan-de-tests.md`). v1 à v3 inchangés. Les exigences ont été rédigées le 28.10 à partir du sujet et de ce qui a été construit.

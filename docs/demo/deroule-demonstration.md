@@ -4,6 +4,8 @@ Projet 5, groupe 13. Ce document prépare la démonstration écrite : ce que nou
 et quoi faire si quelque chose ne marche pas. Il est écrit **avant** les essais : les résultats attendus sont des objectifs, pas des
 constats. On les remplace par ce qui s'est vraiment passé après la répétition.
 
+**Mise à jour du 28.10.2026 :** le professeur demande finalement une **vidéo** de la démonstration (lien à indiquer dans le rapport de 2 pages). Le script pour la tourner est [`script-video.md`](script-video.md) ; ce document reste le déroulé écrit et son journal de preuves.
+
 **Il n'y aura pas de démonstration en direct** (information de l'étudiant, 25.10.2026). La démonstration est donc
 **présentée dans le rapport**, avec des preuves : des captures d'écran. Ce document
 sert à préparer une séance où l'on **déroule les scénarios en les capturant**. Format indiqué par l'étudiant :
