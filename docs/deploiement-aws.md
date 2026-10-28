@@ -88,7 +88,7 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
 ## Ce qui n'est pas vérifié
 
 - **L'hôte EC2** : constaté le 27.10 qu'il démarre, lit ses secrets dans SSM, tire les images depuis le registre HEFR et ghcr.io, et que l'assistant appelle Bedrock avec le rôle de l'instance. Pas encore vérifiés : l'accès par session SSM (agent, droits `ssm:StartSession`, `session-manager-plugin`), la mémoire réelle, laquelle des deux recherches de nœud a trouvé l'adresse.
-- Alloy et Grafana sont installés sur AWS depuis le 27.10 (pods `Running`) ; l'écriture de Mimir et Loki dans S3 n'a pas été constatée (aucun objet relu dans les buckets).
+- Alloy et Grafana sont installés sur AWS depuis le 27.10 (pods `Running`) ; l'écriture de Mimir et Loki dans S3 a été constatée le 28.10 (relevé : 37 objets, 12,3 Mo dans le bucket des blocs Mimir ; 468 objets, 27,7 Mo dans celui des fragments Loki ; 4 autres buckets vides). La mémoire de l'hôte a aussi été mesurée le 28.10 (489 Mio disponibles sur 1909, au repos).
 - Les durées de déploiement de Mimir et Loki avec Helm ; l'état des composants Helm marqués échoués (ils ont dépassé leur délai avant la classe de stockage).
 - Les correctifs du 27.10 (vérification préalable, attente des pods par le script, `aws-redo-host`, ciblage de `aws-allow-ip`, masquage des secrets) :
   syntaxe contrôlée avec `shellcheck`, logique essayée contre de faux outils, **jamais exécutés contre AWS**. Pas non plus : le plan `tofu` avec les modifications de `eks.tf` et `host.tf`.

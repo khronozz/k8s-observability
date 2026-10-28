@@ -28,6 +28,7 @@ confort ou finition.
 | 12 | **Message d'erreur brut quand Bedrock refuse** : l'exception AWS (`ValidationException ...`) s'affiche telle quelle. | R3 (variante) | Remplacer par une phrase claire et garder l'exception dans les journaux. | 3 | Petit |
 | 13 | **Réponses trop longues** (570 jetons pour une salutation, alors que le prompt vise 120 mots) et capacités annoncées non vérifiées. | S6 | Raccourcir la consigne de présentation et la limiter aux outils réels. | 3 | Petit |
 | 14 | **Les limites annoncées par l'assistant sont fausses** : « 15 à 60 minutes » alors que le code fixe 24 h et 200 lignes. | S5 | Lire ces valeurs dans la configuration au lieu de les écrire à la main dans le prompt. | 3 | Petit |
+| 15 | **La requête citée dans le texte de la réponse n'est pas celle qui a été exécutée.** Question « Quel pod consomme le plus de mémoire ? » (28.10) : le texte donne `topk(1, sum by (pod) (container_memory_working_set_bytes{container!=""}))` ; la liste « Outils appelés » montre la requête réelle, avec un filtre sur 7 namespaces et sur le cluster. La liste du pied, construite en Python, est la source fiable. | Capture 07 ; rejeu dans Grafana, capture 08 | Interdire au modèle de recopier une requête dans son texte, ou la remplacer par celle de la liste. Dire dans la réponse quand un filtre de namespaces restreint la portée. | 2 | Petit |
 
 ## 2. Déjà corrigé pendant le projet
 

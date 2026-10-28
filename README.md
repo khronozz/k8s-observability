@@ -20,7 +20,7 @@ qu'il a utilisées, pour que la réponse puisse être vérifiée.
 |---|---|---|
 | 1. Exigences et architecture | [`docs/architecture/`](docs/architecture/) (version 2 à jour, document d'origine conservé) ; [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) | Fait |
 | 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : déployé le 27 octobre** (EKS, Mimir, Loki, Alloy, Grafana, S3) ; Mimir et Loki écrivent bien dans S3 (relevé du 28.10 : 37 objets côté Mimir, 468 côté Loki) |
-| 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.10 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
+| 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.12 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
 | 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Fait, avec réserves** : 15 scénarios (cas d'usage F1 à F5, refus S1 à S7, pannes R1 à R3) exécutés sur AWS les 27 et 28 octobre, résultats et défauts dans le plan. R3 a été remplacé par une variante (mauvais identifiant de modèle). Peu d'essais par scénario |
 | 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) | **À faire** : déroulé écrit, captures d'écran à produire |
 
