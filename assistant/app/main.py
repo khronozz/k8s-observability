@@ -171,7 +171,8 @@ def _sse(obj) -> str:
 def v1_chat_completions(req: ChatCompletionRequest):
     from . import agent  # import tardif, comme pour /ask
     # Seuls les tours « user » et « assistant » sont transmis : le prompt système est celui de l'agent, pas celui d'Open WebUI.
-    turns = [(m.role, agent.text_of(m.content)) for m in req.messages if m.role in ("user", "assistant")]
+    turns = [(m.role, agent.strip_footer(agent.text_of(m.content)) if m.role == "assistant" else agent.text_of(m.content))
+             for m in req.messages if m.role in ("user", "assistant")]
     turns = [t for t in turns if t[1].strip()]
     if not turns or turns[-1][0] != "user":
         raise HTTPException(status_code=422, detail="le dernier message doit être un message « user » non vide")
@@ -179,7 +180,7 @@ def v1_chat_completions(req: ChatCompletionRequest):
         res = agent.chat(turns)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"{e.__class__.__name__}: {str(e)[:300]}")
-    answer, model = res["answer"], req.model or config.PUBLIC_MODEL_NAME
+    answer, model = res["answer"] + agent.queries_footer(res.get("tool_calls") or []), req.model or config.PUBLIC_MODEL_NAME
     cid, created = "chatcmpl-" + uuid.uuid4().hex, int(time.time())
     if req.stream:
         # Réponse « en un bloc » : l'agent n'émet pas de jetons au fil de l'eau, mais Open WebUI demande du flux (SSE).

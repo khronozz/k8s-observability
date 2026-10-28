@@ -57,8 +57,8 @@ make local-down    # supprime tout
 de ce registre. Le cluster coûte environ **0,48 $ par heure** tant qu'il existe : `make aws-down` le détruit, puis contrôle
 qu'il ne reste rien. Le mode d'emploi est dans le [déploiement AWS](docs/deploiement-aws.md).
 
-Dans Open WebUI, ouvrez une nouvelle conversation pour chaque question et dépliez le résultat de l'outil : c'est là qu'on voit
-les requêtes réellement exécutées.
+Dans Open WebUI, ouvrez une nouvelle conversation pour chaque question. Sur **AWS** (version 0.5.11 et suivantes), les outils
+appelés et leurs arguments sont listés sous la réponse (« Outils appelés ») ; pour `promql_instant` et `promql_range`, l'argument est la requête PromQL, qu'on peut rejouer dans Grafana. En **local**, il faut déplier le résultat de l'outil.
 
 ## Documentation
 

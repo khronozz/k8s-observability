@@ -355,6 +355,28 @@ def tool_trace(msgs) -> list[dict]:
     return out
 
 
+FOOTER_MARK = "*Outils appelés (avec leurs arguments) :*"
+_FOOTER_ARG_CHARS = 300
+
+
+def queries_footer(tool_calls: list[dict]) -> str:
+    """Pied de réponse écrit en Python (pas par le modèle) : les outils appelés et leurs arguments (pour `promql_*`, l'argument est la requête PromQL ; pour les autres outils, ce n'est pas la requête interne). L'interface `/v1`
+    ne renvoie à Open WebUI que le texte de la réponse ; sans ce pied, l'utilisateur ne peut pas voir les requêtes
+    pour vérifier (constat du 28.10.2026). Les résultats ne sont pas repris. Vide si aucun outil n'a été appelé."""
+    if not tool_calls:
+        return ""
+    lines = []
+    for t in tool_calls:
+        args = ", ".join(f"{k}={' '.join(str(v).split())[:_FOOTER_ARG_CHARS]}" for k, v in (t.get("args") or {}).items())
+        lines.append(f"{t.get('tool', '?')}({args})")
+    return "\n\n" + FOOTER_MARK + "\n```text\n" + "\n".join(lines) + "\n```"
+
+
+def strip_footer(text: str) -> str:
+    """Retire le pied des anciens tours « assistant » renvoyés par Open WebUI, pour que le modèle ne le relise pas."""
+    return text.split("\n\n" + FOOTER_MARK)[0]
+
+
 UNVERIFIED_CLAIM = re.compile(r"(?i)(vérifications? effectuée|vérifié|aucune donnée|n'existe pas|n'existent pas|aucun pod|introuvable|n'ai aucun)")
 # Affirmation qu'un POD n'existe pas / est absent (F3 du 27.10.2026 : prouvée par des logs vides, qui ne prouvent rien).
 POD_ABSENCE = re.compile(r"(?i)((aucun|pas de) pod\s*(`|\*\*|nommé|de ce nom|dont le nom|appelé)|n'existe aucun pod|"

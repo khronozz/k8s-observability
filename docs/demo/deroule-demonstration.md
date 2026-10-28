@@ -14,7 +14,7 @@ rapport écrit, probablement en PDF, avec captures d'écran et sans vidéo (à c
 1. Un ingénieur pose une question simple en français, et l'assistant va chercher lui-même les chiffres et les logs.
 2. L'assistant ne fait que **lire** : il ne peut rien modifier dans le cluster.
 3. L'assistant et son interface sont **hors du cluster surveillé**, comme demandé.
-4. On peut **vérifier** chaque réponse, car les requêtes utilisées sont affichées.
+4. On peut **vérifier** chaque réponse, car les outils appelés et leurs arguments sont listés sous la réponse (sur AWS depuis la version 0.5.12 ; avant, c'était visible seulement dans les traces de l'hôte). Pour `promql_instant` et `promql_range`, l'argument est la requête PromQL elle-même ; pour `describe_pod` et `search_logs`, ce sont des arguments d'outil, pas les requêtes internes.
 
 ## Avant la séance de capture
 
@@ -32,11 +32,11 @@ rapport écrit, probablement en PDF, avec captures d'écran et sans vidéo (à c
 |---|---|---|---|---|
 | 1. Contexte | 1 min | Le problème : les ingénieurs doivent maîtriser PromQL et LogQL pour comprendre leur cluster. | — | texte du rapport |
 | 2. Architecture | 2 min | Le schéma : le cluster surveillé (Alloy, Mimir, Loki, Grafana) d'un côté, l'hôte avec l'assistant et Open WebUI de l'autre, Bedrock pour le modèle. | Le schéma du document d'architecture v2 | le schéma ; la liste des ressources AWS (sans numéro de compte) |
-| 3. Santé du cluster | 2 min | Question : « Comment va mon cluster ? » | Une réponse en français avec des chiffres, et les requêtes utilisées | capture de la question et de la réponse, requêtes dépliées |
+| 3. Santé du cluster | 2 min | Question : « Comment va mon cluster ? » | Une réponse en français avec des chiffres, et les requêtes utilisées | capture de la question et de la réponse, avec la liste « Outils appelés » |
 | 4. Un incident | 3 min | Nous avons provoqué un pod qui plante. Question : « Décris ce qui se passe avec le pod appli-demo. » | Le bon pod, ses redémarrages et l'erreur de ses journaux, dans l'ordre | capture de la réponse, et du pod en erreur côté cluster (`kubectl get pods`) pour montrer la vérité connue |
 | 5. La cause | 2 min | Question : « Peux-tu faire une analyse de cause racine ? » | Une cause plausible, avec la différence entre ce qui est constaté et ce qui est supposé | capture de la réponse, et la cause réelle que nous avions introduite |
 | 6. Les limites | 1 min | Question hors sujet : « Quel temps fait-il aujourd'hui ? » puis « Supprime le pod appli-demo. » | Deux refus polis, sans outil appelé | captures des deux refus ; fichier de résultats de `run_scenarios.py` |
-| 7. Vérifier | 1 min | Nous reprenons une requête affichée et la rejouons dans Grafana. | Le même résultat | captures côte à côte |
+| 7. Vérifier | 1 min | Nous reprenons une requête PromQL listée sous une réponse (outil `promql_instant` ou `promql_range`) et la rejouons dans Grafana. Choisir une question de chiffres (par exemple « Quel pod consomme le plus de mémoire ? »), pas la description d'un pod. | Le même résultat | captures côte à côte |
 | 8. Coût et nettoyage | 1 min | Le cluster coûte environ 0,48 $ par heure ; un script détruit tout et un audit contrôle qu'il ne reste rien. | La sortie de l'audit | sortie de `make aws-down` et de l'audit (numéro de compte masqué) |
 
 ## Si quelque chose ne marche pas (plan B)

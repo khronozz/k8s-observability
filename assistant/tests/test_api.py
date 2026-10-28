@@ -124,3 +124,35 @@ def test_v1_chat_completions_plain_and_stream(monkeypatch):
 def test_v1_chat_completions_rejects_missing_user_turn():
     r = client.post("/v1/chat/completions", json={"messages": [{"role": "assistant", "content": "x"}]})
     assert r.status_code == 422
+
+
+def test_v1_adds_queries_footer_and_strips_it_from_history(monkeypatch):
+    from app import agent
+    seen = {}
+
+    def fake_chat(turns, agent=None):
+        seen["turns"] = turns
+        return {"answer": "Il y a 2 nœuds.",
+                "tool_calls": [{"tool": "promql_instant", "args": {"query": 'count(kube_node_info{a="b"})'}, "result": "secret-résultat"}],
+                "llm_calls": []}
+
+    monkeypatch.setattr(agent, "chat", fake_chat)
+    first = {"messages": [{"role": "user", "content": "combien de nœuds ?"}]}
+    content = client.post("/v1/chat/completions", json=first).json()["choices"][0]["message"]["content"]
+    assert content.startswith("Il y a 2 nœuds.") and "*Outils appelés (avec leurs arguments) :*" in content
+    assert 'promql_instant(query=count(kube_node_info{a="b"}))' in content
+    assert "secret-résultat" not in content                      # les résultats ne sont pas repris
+    stream = client.post("/v1/chat/completions", json={**first, "stream": True}).text
+    assert "Outils appelés" in stream
+    # Au tour suivant, Open WebUI renvoie la réponse avec son pied : il ne doit pas atteindre le modèle.
+    second = {"messages": [{"role": "user", "content": "combien de nœuds ?"},
+                           {"role": "assistant", "content": content}, {"role": "user", "content": "et les pods ?"}]}
+    client.post("/v1/chat/completions", json=second)
+    assert seen["turns"][1] == ("assistant", "Il y a 2 nœuds.")
+
+
+def test_v1_no_footer_without_tool_call(monkeypatch):
+    from app import agent
+    monkeypatch.setattr(agent, "chat", lambda turns, agent=None: {"answer": "Refus.", "tool_calls": [], "llm_calls": []})
+    r = client.post("/v1/chat/completions", json={"messages": [{"role": "user", "content": "météo ?"}]}).json()
+    assert r["choices"][0]["message"]["content"] == "Refus."
