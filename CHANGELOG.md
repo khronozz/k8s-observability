@@ -3,6 +3,8 @@
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
 ## 2026-10-27
+
+- **Document d'architecture v4 (28.10)** : ajoute la section 2 « Exigences » (18 exigences : 5 satisfaites, 8 avec réserve, 5 partielles, avec origine, preuve et réserves tirées de `docs/tests/plan-de-tests.md`). v1 à v3 inchangés. Les exigences ont été rédigées le 28.10 à partir du sujet et de ce qui a été construit.
 - **Premier déploiement AWS complet, avec l'hôte EC2** (`make aws-up`, 09:05) : 19 min 12 s ; hôte prêt 179 s après son démarrage ; les 40 pods `Running`, 10 volumes liés, Open WebUI répond (détail dans `docs/deploiement-aws.md`). La vérification préalable avait donné 49 contrôles ok, 0 échec.
 - **F1 essai 1 sur AWS (assistant 0.5.0)** : la chaîne fonctionne mais la réponse est partiellement fausse. Requêtes directes dans Mimir : 40 pods en cours (l'assistant dit 0, après avoir inventé la métrique `cluster:namespace:pods:running`, absente), 62 séries de mémoire de conteneurs (l'assistant dit « mémoire et CPU indisponibles »). Les « 502 » vers Mimir étaient probablement du bruit de démarrage d'Alloy (hypothèse, due à `helm_wait = false`), présentés comme critiques. Détail : `docs/tests/resultats/2026-10-27-aws-f1-essai1.md`.
 - Assistant **0.5.1** (préparé, pas encore déployé) : le contexte liste les métriques usuelles présentes et absentes dans Mimir ; `find_problems_in_namespace` donne la première et la dernière occurrence de chaque problème ; consignes du prompt sur les métriques inconnues et sur l'ancienneté. 63 tests unitaires (58 avant) avec faux modèles. Les refus (S1, S2, S4, S6, S7) doivent être rejoués avec le vrai modèle car le prompt a changé.

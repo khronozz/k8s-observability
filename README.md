@@ -40,7 +40,7 @@ Compte AWS, région us-east-1
 
 Le professeur a demandé que l'assistant ne tourne pas dans le cluster qu'il surveille (retour du 22.10.2026). Mimir et Loki
 n'ont pas d'authentification : ils ne sont jamais exposés sur Internet. Le schéma complet est dans le
-[document d'architecture](docs/architecture/Group-13-Architecture-v3.docx).
+[document d'architecture](docs/architecture/Group-13-Architecture-v4.docx).
 
 ## Démarrage rapide
 
@@ -63,7 +63,7 @@ appelés et leurs arguments sont listés sous la réponse (« Outils appelés »
 ## Documentation
 
 - [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide complet (installation, décisions et justifications, mesures, échecs et corrections, points ouverts). Se régénère avec `make docs`.
-- [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`, **conservés tels quels**) et ses mises à jour : [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (25.10, déploiement AWS partiel) et [`Group-13-Architecture-v3.docx`](docs/architecture/Group-13-Architecture-v3.docx) (28.10, version à jour).
+- [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`, **conservés tels quels**) et ses mises à jour : [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (25.10, déploiement AWS partiel) , [`Group-13-Architecture-v3.docx`](docs/architecture/Group-13-Architecture-v3.docx) (28.10, schéma AWS) et [`Group-13-Architecture-v4.docx`](docs/architecture/Group-13-Architecture-v4.docx) (28.10, ajoute les exigences ; version à jour).
 - [`docs/deploiement-local.md`](docs/deploiement-local.md), [`docs/deploiement-aws.md`](docs/deploiement-aws.md) : mode d'emploi détaillé.
 - [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [`docs/plan-amelioration.md`](docs/plan-amelioration.md) (limites et corrections classées par priorité) et [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md).
 - [`CHANGELOG.md`](CHANGELOG.md) : journal daté des changements. [`CONTRIBUTING.md`](CONTRIBUTING.md) : travail à plusieurs (branches, secrets).
