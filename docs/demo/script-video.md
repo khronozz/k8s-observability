@@ -31,15 +31,15 @@ Compte une demi-heure, plus si un accès manque.
 ## 1.1 Récupérer le dépôt
 
 ```bash
-git clone git@gitlab.forge.hefr.ch:nicolas.favre1/k8s-observability.git
+git clone -b dev/nicolas git@gitlab.forge.hefr.ch:nicolas.favre1/k8s-observability.git
 cd k8s-observability
-git checkout main          # ou la branche que Nicolas t'indique, si main n'est pas encore à jour
+git branch --show-current          # doit afficher dev/nicolas
 git pull
 ls scripts/demo-check.sh scripts/demo-fix.sh docs/demo/script-video.md
 ```
 
-Les trois fichiers doivent s'afficher. Sinon, Nicolas n'a pas encore fusionné la branche : demande-lui la branche à utiliser.
-Si tu as déjà le dépôt, fais seulement `git pull`. Si GitLab refuse l'accès, demande à Nicolas de t'ajouter au projet.
+Les trois fichiers doivent s'afficher. Pour la démonstration, on utilise la branche `dev/nicolas` : `main` est protégée et ne sera mise à jour
+que juste avant le rendu. Si tu as déjà le dépôt : `git fetch`, `git checkout dev/nicolas`, `git pull`. Si GitLab refuse l'accès, demande à Nicolas de t'ajouter au projet.
 
 ## 1.2 Installer les outils
 
