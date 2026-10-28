@@ -137,11 +137,20 @@ réponse n'a été retouchée ; une seule conversation par question.
 
 **Ce qu'elle ne prouve pas.** Mesures à 14 minutes d'écart (262,3 MiB à 16:46) : même pod, même ordre de grandeur, pas la même valeur. La courbe sur une heure oscille entre environ 259 et 264 MiB.
 
+### 09. Ressources AWS créées (étape 2)
+
+![Ressources AWS, première partie](captures/09-ressources-aws.png)
+
+![Ressources AWS, seconde partie](captures/09b-ressources-aws.png)
+
+**Ce que l'image montre.** La sortie de `make aws-audit` le 28 octobre vers 18h20, réduite à partir de la section « Clusters EKS » : 1 cluster EKS, 1 instance `t3.small` en service, 11 volumes EBS attachés, 4 groupes de sécurité et 1 VPC, 6 buckets S3, 1 utilisateur IAM, 3 rôles IAM, et ni passerelle NAT, ni adresse Elastic IP, ni équilibreur de charge.
+
+**Ce qu'elle ne prouve pas.** L'audit ne cherche que ce qui porte notre préfixe `g13-p5` ou nos étiquettes : il ne dit rien du reste du compte. Les « 2 volumes non attachés dans la région » sont comptés « tous propriétaires confondus » : ils ne sont pas forcément à nous et nous n'y touchons pas. La commande se termine en erreur (code 1) parce que des ressources existent : c'est le comportement voulu tant que le cluster tourne. La première section de la sortie (ressources étiquetées) est volontairement exclue de la capture : elle contient le numéro de compte AWS.
+
 Requête de la capture 07, telle que listée sous la réponse :
 
 ```text
 promql_instant(query=topk(1, sum by (pod) (container_memory_working_set_bytes{namespace=~"default|grafana|kube-system|loki|mimir|monitoring|test-incident", container!="", cluster="g13-p5-eks"})))
 ```
 
-**Reste à produire** : schéma d'architecture (étape 2), liste des ressources AWS sans numéro de compte (étape 2), sortie de
-`make aws-down` puis de `make aws-audit` (étape 8, numéro de compte masqué).
+**Reste à produire** : sortie de `make aws-down` puis de `make aws-audit` (étape 8, numéro de compte masqué). Le schéma d'architecture (étape 2) est `docs/architecture/deploiement-aws-v3.png`.
