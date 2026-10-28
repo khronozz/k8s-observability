@@ -14,20 +14,20 @@ qu'il a utilisées, pour que la réponse puisse être vérifiée.
   (Open WebUI). Le modèle de langage est Amazon Bedrock (Mistral Large 3).
 - **Version de test : en local** (Kind), tout dans un seul cluster, avec un modèle Ollama. Aucune donnée ne quitte la machine.
 
-## Où en est chaque livrable (au 25 octobre 2026)
+## Où en est chaque livrable (au 28 octobre 2026)
 
 | Livrable du sujet | Où le trouver | État |
 |---|---|---|
 | 1. Exigences et architecture | [`docs/architecture/`](docs/architecture/) (version 2 à jour, document d'origine conservé) ; [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) | Fait |
-| 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : partiel**, voir ci-dessous |
-| 3. Assistant IA | [`assistant/`](assistant/) | **Fait en local** (Ollama). Avec Bedrock : version écrite, seuls les refus ont été essayés. Hôte AWS : écrit, jamais lancé |
-| 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Partiel** : plan de 14 scénarios ; 15 questions de refus et de contrôle essayées ; cas d'usage et pannes non exécutés |
+| 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : déployé le 27 octobre** (EKS, Mimir, Loki, Alloy, Grafana, S3) ; Mimir et Loki écrivent bien dans S3 (relevé du 28.10 : 37 objets côté Mimir, 468 côté Loki) |
+| 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.10 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
+| 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Fait, avec réserves** : 15 scénarios (cas d'usage F1 à F5, refus S1 à S7, pannes R1 à R3) exécutés sur AWS les 27 et 28 octobre, résultats et défauts dans le plan. R3 a été remplacé par une variante (mauvais identifiant de modèle). Peu d'essais par scénario |
 | 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) | **À faire** : déroulé écrit, captures d'écran à produire |
 
-**Ce qui bloque AWS.** L'infrastructure (réseau, EKS, S3, droits) a été créée et détruite par script deux fois (23 et 24 octobre).
-Mimir et Loki ont démarré, mais Alloy et Grafana n'ont jamais été installés : les droits AWS de l'étudiant ont été retirés le
-24 octobre à 15h17, sans cause connue, alors qu'un cluster de test était en marche. L'hôte de l'assistant est écrit et sa syntaxe
-est validée, mais il n'a jamais été lancé. Détail : [déploiement AWS](docs/deploiement-aws.md).
+**AWS.** Les 23 et 24 octobre, l'infrastructure a été créée et détruite par script, puis les droits AWS de l'étudiant ont été
+retirés le 24 octobre à 15h17. Selon l'assistant du cours (message du 26 octobre), il s'agit d'une suppression accidentelle de
+permissions qui a touché plusieurs groupes, et nos scripts n'en sont pas la cause. Depuis le 27 octobre, le déploiement complet
+tourne (cluster EKS surveillé, hôte de l'assistant séparé). Détail : [déploiement AWS](docs/deploiement-aws.md).
 
 ## Architecture cible
 
@@ -65,7 +65,7 @@ les requêtes réellement exécutées.
 - [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide complet (installation, décisions et justifications, mesures, échecs et corrections, points ouverts). Se régénère avec `make docs`.
 - [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`, **conservés tels quels**) et sa mise à jour [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx).
 - [`docs/deploiement-local.md`](docs/deploiement-local.md), [`docs/deploiement-aws.md`](docs/deploiement-aws.md) : mode d'emploi détaillé.
-- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md) et [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md).
+- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [`docs/plan-amelioration.md`](docs/plan-amelioration.md) (limites et corrections classées par priorité) et [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md).
 - [`CHANGELOG.md`](CHANGELOG.md) : journal daté des changements. [`CONTRIBUTING.md`](CONTRIBUTING.md) : travail à plusieurs (branches, secrets).
 
 ## Contenu du dépôt
@@ -78,7 +78,7 @@ modules/observability/    module OpenTofu partagé (Mimir, Loki, Alloy, Grafana,
 envs/local/               assemblage Kind (Garage + module)
 envs/aws/                 assemblage AWS : infra/ (réseau, EKS, S3, droits, hôte EC2) puis stack/ (Mimir, Loki, Alloy, Grafana)
 envs/switch/              Switch Cloud : ABANDONNÉ, jamais exécuté, conservé en référence
-scripts/                  local : preflight, secrets, Garage, Open WebUI, test de fumée ; AWS : aws-up, aws-down, aws-audit ; tests de refus
+scripts/                  local : preflight, secrets, Garage, Open WebUI, test de fumée ; AWS : aws-up, aws-down, aws-audit, aws-redo-host (remplace l'hôte), aws-run-scenarios (tests de refus sur l'hôte) ; tests de refus
 docs/                     guide, architecture, déploiements, tests, démonstration
 ```
 
@@ -88,7 +88,7 @@ docs/                     guide, architecture, déploiements, tests, démonstrat
 - L'assistant n'a ni authentification ni NetworkPolicy ; Open WebUI est prévu pour un seul administrateur.
 - L'agent (`qwen3:8b`) produit parfois une requête PromQL mal formée et peut renoncer ; le test de fumée vérifie qu'un outil est appelé, pas que la réponse est utile.
 - Les variables d'environnement d'Open WebUI ne servent qu'au premier démarrage : les modifier ensuite n'a aucun effet sans supprimer son volume.
-- Rien n'a été mesuré sur la fiabilité des réponses sur un jeu de questions étendu. Avec Bedrock, seuls les **refus** ont été essayés (15 questions, un essai chacune, 14 réponses conformes à notre lecture et une partielle, en local, le 25.10.2026 : [résultats](docs/tests/resultats/2026-10-25-local-bedrock.md)). Les cas d'usage (santé du cluster, incident, cause racine) n'ont pas été essayés avec ce modèle.
+- La fiabilité des réponses n'a pas été mesurée sur un jeu de questions étendu : un à sept essais par scénario, résultats dans le [plan de tests](docs/tests/plan-de-tests.md). Les refus et la santé générale sont corrects dans nos essais ; la description d'un incident, d'un nœud ou d'un service est juste sur l'essentiel mais contient des affirmations fausses ou non vérifiées (conclusions tirées d'un résultat vide, nombres de lignes plafonnés présentés comme totaux, durées mal lues). Détail et corrections proposées : [plan d'amélioration](docs/plan-amelioration.md).
 - L'interface `/v1` de l'assistant n'a pas d'authentification : elle ne doit être joignable que depuis l'hôte d'Open WebUI, jamais depuis Internet.
 - Sur AWS, Open WebUI est servi en HTTP simple (sans chiffrement) sur le port 3000, limité à nos adresses : acceptable pour une preuve de concept, pas pour la production.
 - Les nœuds EKS ont une adresse publique (pas de passerelle NAT, pour limiter le coût) ; l'accès à l'API Kubernetes et à l'interface est limité à nos adresses IP.

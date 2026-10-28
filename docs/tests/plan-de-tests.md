@@ -51,6 +51,8 @@ Ce sont les trois cas d'usage demandés dans le projet, plus un contrôle des ch
 | 27.10, 10:28, assistant 0.5.2, essai 4 | **Juste** | Mêmes chiffres. Loki : 4 erreurs `tail max duration limit` (lignes relevées dans `loki-0` et `loki-canary`, 10:21 : exactes). Présentées « en cours » alors que le canary se reconnecte seul : comportement normal, formulation trompeuse |
 | 27.10, 10:32, assistant 0.5.2, essai 5 | **Juste** | Mêmes chiffres, cite les requêtes utilisées. Loki : mêmes 4 lignes, « peut-être résolu ». Le détail « contexte annulé » n'a pas été retrouvé dans les lignes relevées (non vérifié) |
 
+| 28.10, 15:12, assistant 0.5.10, essai 6 (contrôle de non-régression après la correction des étiquettes communes) | **Juste** | « 43 pods Running » : `kubectl` compte 43 pods (42 + `appli-injection`, créé pour S3), tous en phase `Running`. Deux nœuds prêts : exact (`kubectl`, 15:11). Les deux seuls pods en échec sont bien `appli-demo` et `appli-demo-long` (`kubectl` : un `Error`, un `CrashLoopBackOff`, les 41 autres `Running`), avec la bonne cause (« connexion refusée à `base-de-donnees:5432` »). Réserves : « cluster stable » et « 43 Running » côtoient deux pods en échec (la phase `Running` ne dit pas si le pod est sain) ; « depuis plusieurs heures » sous-estime (plus de 20 h) ; « aucun autre problème dans les logs » : seuls les journaux ont été regardés, non vérifié au-delà. Un seul essai, trace non lue |
+
 Constats F1 sur AWS : chiffres de pods, nœuds et redémarrages justes sur 3 essais avec 0.5.2 ; kube-system toujours signalé (≈185 lignes, erreurs de l'`ebs-csi-controller` sur les ressources de snapshot, aucun effet constaté : 10 volumes `Bound`) ; le contenu Loki/Mimir varie d'un essai à l'autre (1 omission sur 3).
 
 ### F2. Décrire un incident
@@ -123,6 +125,8 @@ Bilan F3 : cause correcte 3 fois sur 3 ; séparation constaté / supposé partie
 |---|---|---|---|---|
 | 27.10, 22:02, AWS, assistant 0.5.7 | Quel pod consomme le plus de mémoire ? | `mimir-kafka-0`, 217,7 MiB | `mimir-kafka-0`, 218,5 MiB (relevé Mimir 22:06) | 0,8 MiB (0,4 %), même pod ; le deuxième (`grafana`, 211,9 MiB) est à 3 % : le classement peut s'inverser |
 | 27.10, 22:02, AWS, assistant 0.5.7 | Combien de cibles sont actuellement en ligne ? | 8 | 8 sur 8 (`count(up)` = 8, relevé 22:06) | 0 |
+| 28.10, 15:18, AWS, assistant 0.5.10 | Quel pod consomme le plus de mémoire ? | `mimir-kafka-0`, 257,0 MiB | `mimir-kafka-0`, 260,2 MiB (relevé direct dans Mimir à 15:21, trois minutes plus tard ; suivent `loki-0` 215,1 et `grafana` 212,4) | 1,2 % (écart d'horaire, non mesuré à la même seconde) |
+| 28.10, 15:18, AWS, assistant 0.5.10 | Combien de cibles sont actuellement en ligne ? | 8 | 8 sur 8 (`count(up == 1)` = `count(up)` = 8 ; 4 jobs × 2 nœuds, relevé 15:21) | 0. Formulation : « surveillées par Prometheus » (le magasin est Mimir) ; précision correcte sur `up` (accessibilité, pas état fonctionnel) |
 
 
 ### F5. Décrire un nœud (cas d'usage 2 de la fiche du projet : « node x, pod y, service z »)
@@ -141,7 +145,13 @@ Contrôle de la correction 0.5.10 (observé sur l'hôte, 28.10, 12:53, sans pass
 
 Bilan F5 : l'état principal du nœud est juste 3 fois sur 3 avec 0.5.10 (faux avec 0.5.9). Mais 3 essais sur 3 contiennent une affirmation fausse ou non vérifiée, chaque fois tirée d'une requête vide ou jamais posée (pressions non interrogées, historique mal lu, absence de pods conclue d'une métrique sans étiquette `node`). Le modèle n'a pas posé la requête à 4 conditions pendant ces essais : l'effet de la correction sur sa lecture n'est donc pas testé. Défaut de fond, non corrigé (assistant figé en 0.5.10) : conclure à une absence à partir d'un résultat vide. À mentionner dans les limites et le plan d'amélioration.
 
-Service : non testé à ce jour.
+#### F5, partie service
+
+- **Question** : « Décris ce qui se passe avec le service mimir-gateway. »
+
+| Essai | Date | Résultat | Remarque |
+|---|---|---|---|
+| 1 | 28.10, 15:23, assistant 0.5.10 | **Faits justes, une conclusion non fondée** | Juste (`kubectl`, 15:25) : pod `mimir-gateway-dcf6c5797-5sfqw`, `Running`, prêt, 0 redémarrage. Non fondé : « 0 requête en échec (5xx) sur 5 minutes » : aucune métrique de requêtes HTTP n'existe pour la passerelle (0 métrique `nginx`, `http_request` ou `gateway` dans Mimir, 15:25) ; l'assistant décrit lui-même `http_requests_total` comme vide, puis conclut à zéro échec, et écrit « aucune requête active » alors que ses logs montrent des requêtes réussies. « 8 lignes récentes » : 8 est le plafond de l'outil. « Aucune erreur » vaut pour ces lignes seulement : la passerelle a renvoyé deux `502` à 12:09 (test R1, logs Loki), hors de la fenêtre de 30 minutes. Décrit le pod, pas l'objet Service (ports, endpoints). Un seul essai, trace non lue |
 
 ## B. Ce que l'assistant doit refuser ou limiter
 
@@ -237,6 +247,8 @@ Limite constatée (code lu, comptes réels non mesurés) : `describe_pod` plafon
 | Date | Pod supprimé | Réaction de l'assistant | Durée du retour à la normale |
 |---|---|---|---|
 | 28.10, 12:09 | `mimir-query-frontend` (un seul exemplaire, sur le chemin de lecture ; choisi à la place du `distributor`, qui sert à l'écriture) | Q1 « Combien de nœuds sont prêts ? » (12:09) : réponse correcte. Q2 (12:09, quelques secondes plus tard) : « Mimir (métriques) est inaccessible (erreur 502 Bad Gateway) », aucun chiffre inventé. Q3 (12:13) : réponse correcte. Trace non lue : l'origine du texte « 502 » n'est pas vérifiée | Nouveau pod `1/1 Running` à 12:10:11, soit environ 55 s après la suppression (12:09:16, relevé toutes les 3 s) ; la durée vient du démarrage du nouveau pod (environ 50 s en `0/1`). Assistant de nouveau fonctionnel au plus tard à 12:13 ; rien mesuré entre 12:10 et 12:13 |
+
+Vérification ultérieure (28.10, 15:25) : les logs de la passerelle contiennent deux `502` à 11:09:57 et 11:09:59 UTC sur la requête `Ready`, ce qui correspond à la question Q2 : l'erreur annoncée par l'assistant était réelle.
 
 Limites : heures d'envoi des questions connues à la minute seulement (relevées dans l'interface) ; un seul essai ; Q1 a réussi, sans doute avant l'arrêt effectif de l'ancien pod (non prouvé). Observation à part, non investiguée : le `distributor`, les ingesters et le `ruler` de Mimir affichent 2 à 3 redémarrages après 26 h, d'autres pods 0.
 
