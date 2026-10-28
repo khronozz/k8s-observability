@@ -25,12 +25,32 @@ def _out(fn, *a, **kw) -> str:
     return s if len(s) <= _MAX_TOOL_CHARS else s[:_MAX_TOOL_CHARS] + " ...[tronqué]"
 
 
+def factor_common_labels(data: dict) -> dict:
+    """Sans perte : les étiquettes identiques sur TOUTES les séries sont écrites une seule fois, dans
+    `data.labels_communs`, au lieu d'être répétées. Sans cela, 12 séries d'un même nœud dépassaient la limite
+    de `_MAX_TOOL_CHARS` et la série décisive (`Ready`, `status="true"`) était coupée (F5, 28.10.2026)."""
+    result = data.get("data", {}).get("result")
+    if not isinstance(result, list) or len(result) < 2:
+        return data
+    metrics = [serie.get("metric") for serie in result]
+    if not all(isinstance(m, dict) for m in metrics):
+        return data
+    common = {k: v for k, v in metrics[0].items() if all(m.get(k) == v for m in metrics[1:])}
+    if not common:
+        return data
+    for serie in result:
+        serie["metric"] = {k: v for k, v in serie["metric"].items() if k not in common}
+    data["data"]["labels_communs"] = common
+    return data
+
+
 def _with_units(fn, query: str, *args) -> dict:
     """Appelle Mimir puis ajoute le champ `lisible` (octets) calculé en Python : le modèle se trompait en
-    convertissant lui-même les octets (facteur 10, test du 16.10.2026)."""
+    convertissant lui-même les octets (facteur 10, test du 16.10.2026). Factorise ensuite les étiquettes
+    communes à toutes les séries (`factor_common_labels`)."""
     data = fn(query, *args)
     annotate_series(data.get("data", {}).get("result", []), query)
-    return data
+    return factor_common_labels(data)
 
 
 @tool

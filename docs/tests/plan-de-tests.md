@@ -124,6 +124,25 @@ Bilan F3 : cause correcte 3 fois sur 3 ; séparation constaté / supposé partie
 | 27.10, 22:02, AWS, assistant 0.5.7 | Quel pod consomme le plus de mémoire ? | `mimir-kafka-0`, 217,7 MiB | `mimir-kafka-0`, 218,5 MiB (relevé Mimir 22:06) | 0,8 MiB (0,4 %), même pod ; le deuxième (`grafana`, 211,9 MiB) est à 3 % : le classement peut s'inverser |
 | 27.10, 22:02, AWS, assistant 0.5.7 | Combien de cibles sont actuellement en ligne ? | 8 | 8 sur 8 (`count(up)` = 8, relevé 22:06) | 0 |
 
+
+### F5. Décrire un nœud (cas d'usage 2 de la fiche du projet : « node x, pod y, service z »)
+
+- **Question** : « Décris ce qui se passe avec le nœud ip-10-13-0-117.ec2.internal. »
+- **Réussite** : l'état annoncé (prêt ou non, pressions mémoire, disque, PID) correspond à `kubectl get node`.
+
+| Essai | Date | Résultat | Remarque |
+|---|---|---|---|
+| 1 | 28.10, 12:29, assistant 0.5.9 | **Échec : état principal faux** | Réponse : « problème critique », « Statut Ready : `false` », « nœud injoignable ou dégradé ». Réalité (`kubectl`, 12:30) : `Ready=True`, `MemoryPressure=False`, `DiskPressure=False`, `PIDPressure=False`. Seules les trois pressions sont justes. Cause observée (trace + requête rejouée dans le conteneur) : la requête `kube_node_status_condition{...}` renvoie 12 séries (4 conditions × 3 états), soit 4169 caractères ; `_out()` coupe à 3500 (`_MAX_TOOL_CHARS`), ce qui supprime la série `Ready, status="true"` (valeur 1) ; il reste `Ready, status="false"` (valeur 0), que le modèle semble avoir lue d'après son étiquette sans regarder la valeur (inférence, non vue). Fausse alerte critique sur un nœud sain |
+| 2 | 28.10, 12:49, assistant 0.5.10 | **État principal juste, une affirmation fausse** | `Ready=true` juste. Faux : « MemoryPressure, DiskPressure… ne sont pas listées comme disponibles dans ce cluster » (trace : la seule requête envoyée portait sur `condition="Ready"`, les pressions n'ont jamais été interrogées ; elles existent, vues le 28.10 à 12:35). « Aucune métrique de charge CPU ou mémoire nœud n'est présente » : non vérifié |
+| 3 | 28.10, 12:50, assistant 0.5.10 | **État principal juste, une affirmation fausse** | `Ready=true` juste. Faux : « il a récemment eu un état non prêt (`status="false"`) » : `min_over_time` de `Ready=true` sur 24 h vaut 1 (Mimir, 12:52), la série `status="false"` existe avec la valeur 0. Propose de vérifier les pressions au lieu de le faire (même requête unique `Ready`) |
+| 4 | 28.10, 12:51, assistant 0.5.10 | **État et pressions justes, une affirmation fausse** | `Ready=true` et les trois pressions à `false` : justes. Faux : « Aucun pod `Running` n'est actuellement sur ce nœud (métrique `kube_pod_status_phase` vide) » : `kubectl` compte 25 pods sur ce nœud (12:53), `kube_pod_info` aussi. La requête filtrait sur une étiquette `node` qui n'existe pas sur cette métrique (résultat vide vérifié dans Mimir) ; il a pris le vide pour une absence, contre la règle de son prompt. CPU 0,11 core et mémoire 1,26 GiB : non vérifiés. Cinq appels d'outils |
+
+Contrôle de la correction 0.5.10 (observé sur l'hôte, 28.10, 12:53, sans passer par le modèle) : la requête d'origine à 4 conditions fait maintenant 1426 caractères (contre 4169), n'est plus tronquée et contient la série `Ready, status="true"` (valeur 1) ; les étiquettes communes sont écrites une fois (`labels_communs`).
+
+Bilan F5 : l'état principal du nœud est juste 3 fois sur 3 avec 0.5.10 (faux avec 0.5.9). Mais 3 essais sur 3 contiennent une affirmation fausse ou non vérifiée, chaque fois tirée d'une requête vide ou jamais posée (pressions non interrogées, historique mal lu, absence de pods conclue d'une métrique sans étiquette `node`). Le modèle n'a pas posé la requête à 4 conditions pendant ces essais : l'effet de la correction sur sa lecture n'est donc pas testé. Défaut de fond, non corrigé (assistant figé en 0.5.10) : conclure à une absence à partir d'un résultat vide. À mentionner dans les limites et le plan d'amélioration.
+
+Service : non testé à ce jour.
+
 ## B. Ce que l'assistant doit refuser ou limiter
 
 ### S1. Questions hors sujet

@@ -1,5 +1,7 @@
 """Teste la boucle agent -> outil -> réponse avec un faux modèle (PAS qwen3 : le comportement réel du modèle
 n'est pas testé ici)."""
+import json
+
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain.agents import create_agent
@@ -247,3 +249,47 @@ def test_prompt_demands_findings_and_hypotheses_and_forbids_proof_by_empty_logs(
     from app import agent
     assert "« Constats »" in agent.SYSTEM_PROMPT and "« Hypothèses »" in agent.SYSTEM_PROMPT
     assert "ne prouvent PAS" in agent.SYSTEM_PROMPT and "`chronologie_texte`" in agent.SYSTEM_PROMPT and "routine" in agent.SYSTEM_PROMPT
+
+
+def _condition_series():
+    """12 séries comme celles d'un nœud réel (F5, 28.10.2026) : 4 conditions x 3 états, ~340 caractères chacune."""
+    out = []
+    for cond in ("DiskPressure", "MemoryPressure", "PIDPressure", "Ready"):
+        for status in ("false", "true", "unknown"):
+            on = (status == "true") == (cond == "Ready")
+            out.append({"metric": {"__name__": "kube_node_status_condition", "cluster": "g13-p5-eks",
+                                   "condition": cond, "instance": "10.13.0.186:8080",
+                                   "job": "integrations/kubernetes/kube-state-metrics",
+                                   "k8s_cluster_name": "g13-p5-eks", "node": "ip-10-13-0-117.ec2.internal",
+                                   "source": "kubernetes", "status": status},
+                        "value": [1793186973.992, "1" if on else "0"]})
+    return out
+
+
+def test_factor_common_labels_is_lossless():
+    import copy
+    original = _condition_series()
+    data = {"status": "success", "data": {"resultType": "vector", "result": copy.deepcopy(original)}}
+    out = ag.factor_common_labels(data)
+    common = out["data"]["labels_communs"]
+    assert common["node"] == "ip-10-13-0-117.ec2.internal" and common["job"].endswith("kube-state-metrics")
+    for before, after in zip(original, out["data"]["result"]):
+        assert after["metric"] == {"condition": before["metric"]["condition"], "status": before["metric"]["status"]}
+        assert {**common, **after["metric"]} == before["metric"]
+        assert after["value"] == before["value"]
+
+
+def test_node_conditions_fit_in_tool_limit_and_ready_true_is_kept():
+    raw = json.dumps({"data": {"result": _condition_series()}}, ensure_ascii=False)
+    assert len(raw) > ag._MAX_TOOL_CHARS          # c'est ce qui coupait la série Ready/true
+    res = ag._out(ag._with_units, lambda q: {"data": {"result": _condition_series()}}, "kube_node_status_condition")
+    assert "tronqué" not in res
+    kept = [s for s in json.loads(res)["data"]["result"] if s["metric"] == {"condition": "Ready", "status": "true"}]
+    assert kept and kept[0]["value"][1] == "1"
+
+
+def test_factor_common_labels_leaves_single_series_and_distinct_series_alone():
+    one = {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}]}}
+    assert ag.factor_common_labels(one) == {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}]}}
+    two = {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}, {"metric": {"a": "2"}, "value": [1, "3"]}]}}
+    assert "labels_communs" not in ag.factor_common_labels(two)["data"]
