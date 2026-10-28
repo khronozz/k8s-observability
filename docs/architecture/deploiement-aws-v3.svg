@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="880" viewBox="0 0 1000 880" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2430"/></marker><marker id="d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs>
+<rect width="1000" height="880" fill="#fff"/>
+<text x="20" y="22" font-size="14" text-anchor="start" fill="#374151">Les flèches suivent le sens de la requête (qui appelle qui). Pointillé : configuration au démarrage.</text>
+<rect x="44" y="40" width="230" height="64" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="159.0" y="68.5" font-size="19" text-anchor="middle" fill="#1f2430">Ingénieur</text>
+<text x="159.0" y="95.5" font-size="14" text-anchor="middle" fill="#4b5563">navigateur, adresse autorisée</text>
+<text x="290" y="76" font-size="14" text-anchor="start" fill="#374151">HTTP, port 3000</text>
+<rect x="4" y="124" width="992" height="736" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="980" y="150" font-size="16" text-anchor="end" fill="#475569">VPC du projet (groupe 13)</text>
+<rect x="44" y="165" width="400" height="395" rx="16" fill="#eef6ff" stroke="#2f80c0" stroke-width="3"/>
+<text x="62" y="195" font-size="19" font-weight="700" fill="#1d5f95">Instance EC2 t3.small</text>
+<text x="62" y="216" font-size="14" text-anchor="start" fill="#4b5563">hors du cluster · Docker Compose</text>
+<rect x="64" y="240" width="360" height="80" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="244.0" y="276.5" font-size="19" text-anchor="middle" fill="#1f2430">Open WebUI</text>
+<text x="244.0" y="303.5" font-size="14" text-anchor="middle" fill="#4b5563">interface de chat</text>
+<path d="M244 320 L244 366" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="256" y="349" font-size="14" text-anchor="start" fill="#374151">/v1</text>
+<rect x="64" y="366" width="360" height="130" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="244.0" y="417.5" font-size="19" text-anchor="middle" fill="#1f2430">Assistant</text>
+<text x="244.0" y="444.5" font-size="14" text-anchor="middle" fill="#4b5563">FastAPI + agent LangGraph</text>
+<text x="244.0" y="463.5" font-size="14" text-anchor="middle" fill="#4b5563">lecture seule</text>
+<path d="M44 72 L22 72 L22 280 L62 280" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="540" y="165" width="440" height="500" rx="16" fill="#f1faf1" stroke="#2e7d32" stroke-width="3"/>
+<text x="558" y="195" font-size="19" font-weight="700" fill="#256428">Cluster EKS</text>
+<text x="558" y="216" font-size="14" text-anchor="start" fill="#4b5563">le cluster surveillé · 2 nœuds m5.xlarge</text>
+<rect x="560" y="240" width="170" height="90" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="645.0" y="271.5" font-size="19" text-anchor="middle" fill="#1f2430">Mimir</text>
+<text x="645.0" y="298.5" font-size="14" text-anchor="middle" fill="#4b5563">métriques</text>
+<text x="645.0" y="317.5" font-size="14" text-anchor="middle" fill="#4b5563">NodePort 30090</text>
+<rect x="560" y="370" width="170" height="90" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="645.0" y="401.5" font-size="19" text-anchor="middle" fill="#1f2430">Loki</text>
+<text x="645.0" y="428.5" font-size="14" text-anchor="middle" fill="#4b5563">logs, événements</text>
+<text x="645.0" y="447.5" font-size="14" text-anchor="middle" fill="#4b5563">NodePort 30310</text>
+<rect x="800" y="285" width="160" height="90" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="880.0" y="326.5" font-size="19" text-anchor="middle" fill="#1f2430">Alloy</text>
+<text x="880.0" y="353.5" font-size="14" text-anchor="middle" fill="#4b5563">collecte</text>
+<rect x="560" y="500" width="170" height="70" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="645.0" y="531.5" font-size="19" text-anchor="middle" fill="#1f2430">Grafana</text>
+<text x="645.0" y="558.5" font-size="14" text-anchor="middle" fill="#4b5563">lit Mimir et Loki</text>
+<rect x="560" y="590" width="390" height="60" rx="12" fill="#fff" stroke="#1f2430" stroke-width="2.5"/>
+<text x="755.0" y="626.5" font-size="19" text-anchor="middle" fill="#1f2430">Nœuds, pods, services surveillés</text>
+<path d="M424 400 L512 400 L512 285 L558 285" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="452" y="392" font-size="14" text-anchor="start" fill="#374151">PromQL</text>
+<path d="M424 440 L558 440" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="452" y="432" font-size="14" text-anchor="start" fill="#374151">LogQL</text>
+<path d="M800 320 L732 290" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M800 345 L732 410" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M880 375 L880 588" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M645 500 L645 462" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="44" y="610" width="185" height="80" rx="12" fill="#fff" stroke="#6b7280" stroke-width="2"/>
+<text x="136.5" y="646.0" font-size="18" text-anchor="middle" fill="#1f2430">SSM</text>
+<text x="136.5" y="673.0" font-size="14" text-anchor="middle" fill="#4b5563">secrets, administration</text>
+<rect x="259" y="610" width="185" height="80" rx="12" fill="#fff" stroke="#6b7280" stroke-width="2"/>
+<text x="351.5" y="646.0" font-size="18" text-anchor="middle" fill="#1f2430">Registre GitLab</text>
+<text x="351.5" y="673.0" font-size="14" text-anchor="middle" fill="#4b5563">image de l'assistant</text>
+<path d="M136 610 L136 562" fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#d)"/>
+<path d="M351 610 L351 562" fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#d)"/>
+<rect x="44" y="740" width="400" height="90" rx="16" fill="#fff6ea" stroke="#d98200" stroke-width="3"/>
+<text x="244.0" y="781.5" font-size="19" text-anchor="middle" fill="#a05f00">Amazon Bedrock</text>
+<text x="244.0" y="808.5" font-size="14" text-anchor="middle" fill="#4b5563">Mistral Large 3</text>
+<path d="M244 496 L244 738" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="540" y="740" width="440" height="90" rx="16" fill="#f6f2ff" stroke="#6d4bb0" stroke-width="3"/>
+<text x="760.0" y="781.5" font-size="19" text-anchor="middle" fill="#4b3486">Amazon S3</text>
+<text x="760.0" y="808.5" font-size="14" text-anchor="middle" fill="#4b5563">buckets de Mimir et de Loki</text>
+<path d="M755 665 L755 738" fill="none" stroke="#1f2430" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="767" y="708" font-size="14" text-anchor="start" fill="#374151">écriture</text>
+</svg>

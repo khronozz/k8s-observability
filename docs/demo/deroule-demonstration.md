@@ -31,7 +31,7 @@ rapport écrit, probablement en PDF, avec captures d'écran et sans vidéo (à c
 | Étape | Durée visée | Ce que nous faisons | Ce qu'on doit voir | Preuve à garder |
 |---|---|---|---|---|
 | 1. Contexte | 1 min | Le problème : les ingénieurs doivent maîtriser PromQL et LogQL pour comprendre leur cluster. | — | texte du rapport |
-| 2. Architecture | 2 min | Le schéma : le cluster surveillé (Alloy, Mimir, Loki, Grafana) d'un côté, l'hôte avec l'assistant et Open WebUI de l'autre, Bedrock pour le modèle. | Le schéma du document d'architecture v2 | le schéma ; la liste des ressources AWS (sans numéro de compte) |
+| 2. Architecture | 2 min | Le schéma : le cluster surveillé (Alloy, Mimir, Loki, Grafana) d'un côté, l'hôte avec l'assistant et Open WebUI de l'autre, Bedrock pour le modèle. | Le schéma de déploiement AWS du document d'architecture v3 (`docs/architecture/deploiement-aws-v3.png`) | le schéma ; la liste des ressources AWS (sans numéro de compte) |
 | 3. Santé du cluster | 2 min | Question : « Comment va mon cluster ? » | Une réponse en français avec des chiffres, et les requêtes utilisées | capture de la question et de la réponse, avec la liste « Outils appelés » |
 | 4. Un incident | 3 min | Nous avons provoqué un pod qui plante. Question : « Décris ce qui se passe avec le pod appli-demo. » | Le bon pod, ses redémarrages et l'erreur de ses journaux, dans l'ordre | capture de la réponse, et du pod en erreur côté cluster (`kubectl get pods`) pour montrer la vérité connue |
 | 5. La cause | 2 min | Question : « Peux-tu faire une analyse de cause racine ? » | Une cause plausible, avec la différence entre ce qui est constaté et ce qui est supposé | capture de la réponse, et la cause réelle que nous avions introduite |
