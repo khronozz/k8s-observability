@@ -1,7 +1,7 @@
 # Déploiement sur AWS
 
-Cible demandée par le professeur le 22.10.2026. **Partiellement exécuté** : voir l'état exact dans la section
-« Ce qui a été observé » et le [README](../README.md).
+Cible demandée par le professeur le 22.10.2026. **Déployé de bout en bout le 27.10, puis testé les 27 et 28.10** ; ce qui reste non vérifié est listé
+dans la section « Ce qui n'est pas vérifié ». Le détail des essais est dans la section « Ce qui a été observé » et le [README](../README.md).
 
 
 Retour du professeur du 22.10.2026 et ce que le groupe en a retenu :
@@ -95,7 +95,7 @@ Règle de nommage : toutes nos ressources portent le préfixe `g13-p5` (groupe 1
 - L'image d'Open WebUI (1,46 Go) a mis 12 min 44 s à se télécharger sur Kind (19.10) : sur l'hôte EC2, durée inconnue ; `aws-up` attend jusqu'à 25 min.
 - La mémoire réelle de l'hôte (`t3.small`, 2 Gio : Open WebUI occupait ≈ 0,7 Gio sur Kind, le reste n'est pas mesuré).
 - Crédits AWS restants et responsabilité de la facture (page des crédits : 0 $ de crédits visibles ; les étudiants ont été informés oralement que l'école paie ; le courriel du 15.10 ne le dit pas).
-- Les trois cas d'usage avec le vrai modèle : voir le [plan de tests](tests/plan-de-tests.md), aucun résultat encore. Les refus (hors sujet, actions, secrets) ont été essayés en local le 25.10, un essai par formulation.
+- Les cas d'usage F1 à F5 avec le vrai modèle ont été essayés sur AWS les 27 et 28.10 : résultats et réserves dans le [plan de tests](tests/plan-de-tests.md). Ce qui reste non vérifié : la stabilité sur de nombreux essais (1 à 7 essais par scénario).
 
 ## Pièges rencontrés (utile à qui reprend)
 

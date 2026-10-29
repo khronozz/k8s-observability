@@ -132,7 +132,7 @@ check-secrets:
 	if [ -n "$$hits" ]; then echo "À vérifier : valeurs ressemblant à des secrets :"; echo "$$hits"; exit 1; fi
 	@echo "check-secrets : rien de suspect (recherche par motifs, pas une preuve)."
 
-# --- AWS (EN COURS : non exécuté à ce jour) -----------------------------------------------------
+# --- AWS (exécuté de bout en bout le 27.10 ; détail : docs/deploiement-aws.md) -----------------------------------------------------
 aws-check:
 	scripts/aws-preflight.sh
 
