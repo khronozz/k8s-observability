@@ -68,6 +68,16 @@ appelés et leurs arguments sont listés sous la réponse (« Outils appelés »
 - [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [`docs/plan-amelioration.md`](docs/plan-amelioration.md) (limites et corrections classées par priorité) et [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md).
 - [`CHANGELOG.md`](CHANGELOG.md) : journal daté des changements. [`CONTRIBUTING.md`](CONTRIBUTING.md) : travail à plusieurs (branches, secrets).
 
+## Branches du dépôt
+
+Le groupe a travaillé sur plusieurs branches. La branche principale (`main`) reçoit le travail de `dev/nicolas`, qui contient la pile d'observabilité, l'assistant, le déploiement AWS, les tests, les documents et le rapport. Les autres branches n'ont **pas** été fusionnées : le choix a été fait pour éviter de résoudre des conflits à la fin du projet, et il peut être revu si le groupe le souhaite. Pour voir la contribution des autres membres, il faut consulter ces branches :
+
+| Branche | Auteur | Contenu |
+|---|---|---|
+| `dev/malik` | Malik Fleury | Mode hybride en local : LLM sur Amazon Bedrock (`LLM_PROVIDER=bedrock`), script de secret `scripts/local-bedrock-secret.sh`, test de fumée adapté (2 commits du 25.10). Cette branche contient aussi une copie plus ancienne de `dev/nicolas`. |
+| `partie2-switchengines` | Khalil El Ajeri | Déploiement sur SWITCHengines : 2 machines virtuelles et k3s en OpenTofu (`envs/switch/infra/`), création du stockage S3 et des machines (`scripts/switch-s3-init.py`, `scripts/switch-vms.py`), adaptation du test de fumée. |
+| `dev/malik-report` | Malik Fleury | Brouillon de rapport (`docs/final/`), non retenu : le rapport à rendre est `docs/rapport/Report-Group13-en.docx`. |
+
 ## Contenu du dépôt
 
 ```
