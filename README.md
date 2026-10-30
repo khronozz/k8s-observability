@@ -14,15 +14,15 @@ qu'il a utilisées, pour que la réponse puisse être vérifiée.
   (Open WebUI). Le modèle de langage est Amazon Bedrock (Mistral Large 3).
 - **Version de test : en local** (Kind), tout dans un seul cluster, avec un modèle Ollama. Aucune donnée ne quitte la machine.
 
-## Où en est chaque livrable (au 28 octobre 2026)
+## Où en est chaque livrable (au 30 octobre 2026)
 
 | Livrable du sujet | Où le trouver | État |
 |---|---|---|
-| 1. Exigences et architecture | [`docs/architecture/`](docs/architecture/) (version 3 à jour ; versions 1 et 2 conservées) ; [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) | Fait |
+| 1. Exigences et architecture | [`docs/architecture/`](docs/architecture/) (version 4 à jour, avec les exigences ; versions 1 à 3 conservées) ; [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) | Fait |
 | 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : déployé le 27 octobre** (EKS, Mimir, Loki, Alloy, Grafana, S3) ; Mimir et Loki écrivent bien dans S3 (relevé du 28.10 : 37 objets côté Mimir, 468 côté Loki) |
 | 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.12 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
 | 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Fait, avec réserves** : 15 scénarios (cas d'usage F1 à F5, refus S1 à S7, pannes R1 à R3) exécutés sur AWS les 27 et 28 octobre, résultats et défauts dans le plan. R3 a été remplacé par une variante (mauvais identifiant de modèle). Peu d'essais par scénario |
-| 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) (déroulé écrit, 9 captures du 28.10) ; [`docs/demo/script-video.md`](docs/demo/script-video.md) (script de la vidéo demandée par le professeur) | Captures **faites**. Vidéo **à tourner** (script prêt, scripts d'accès `scripts/demo-check.sh` et `scripts/demo-fix.sh` testés seulement avec de faux outils) |
+| 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) (déroulé écrit, 9 captures du 28.10) ; [`docs/demo/script-video.md`](docs/demo/script-video.md) (script de la vidéo demandée par le professeur) | Captures **faites**. Vidéo **faite** (enregistrée le 29.10, 9 min 09 s, en français ; lien dans le rapport de 2 pages `docs/rapport/Report-Group13-en.docx`) |
 
 **AWS.** Les 23 et 24 octobre, l'infrastructure a été créée et détruite par script, puis les droits AWS de l'étudiant ont été
 retirés le 24 octobre à 15h17. Selon l'assistant du cours (message du 26 octobre), il s'agit d'une suppression accidentelle de

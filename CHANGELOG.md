@@ -2,6 +2,12 @@
 
 Format : date, changement, preuve ou référence. Seuls les faits constatés sont consignés ; le détail est dans le guide (`docs/`).
 
+## 2026-10-30
+
+- **Vidéo de démonstration** enregistrée le 29.10 par Malik (9 min 09 s, commentée en français) d'après `docs/demo/script-video.md`, qu'il a un peu adapté. Hébergée sur Switch Drive (lien de partage sans connexion, testé en fenêtre privée par Nicolas) ; le lien est dans les rapports de 2 pages. Contrôle fait sur les images (une toutes les 4 s, lues par OCR) : aucune adresse IP, clé ni numéro de compte visible ; l'hôte apparaît sous un alias. Le contenu parlé n'a pas été transcrit automatiquement ; il a été réécouté par Nicolas.
+- Dépôt passé en visibilité « Internal » sur le GitLab de la HEFR (l'option publique y est désactivée). Le professeur n'apparaît pas dans la liste des membres (compte non confirmé).
+- Documentation : états périmés corrigés (déploiement AWS, correctifs de scripts du 27.10 : 12 exécutions de `aws-redo-host` relevées dans l'historique du terminal), section « Branches du dépôt » dans le README.
+
 ## 2026-10-27
 
 - **Script de la vidéo de démonstration (29.10)** : `docs/demo/script-video.md` en trois phases (accès, préparation, tournage) pour Malik, avec les captures du 28.10 comme repères. Deux scripts sans OpenTofu : `scripts/demo-check.sh` (contrôle en lecture seule) et `scripts/demo-fix.sh` (entrée d'accès EKS, adresse IP sur l'API et sur Open WebUI). **Testés seulement avec de faux `aws`, `kubectl` et `curl`** : jamais avec le vrai compte AWS de Malik. `deroule-demonstration.md` : note sur la vidéo.
