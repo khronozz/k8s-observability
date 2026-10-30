@@ -10,6 +10,7 @@ ils peuvent rater des formats d'autres applications. Les compteurs sont des mino
 from __future__ import annotations
 
 import re
+import time
 
 from . import clients, config
 
@@ -38,9 +39,18 @@ def classify(line: str) -> str | None:
     return None
 
 
+def _age_min(ts_ns: str, now: float) -> int | None:
+    """Ancienneté en minutes d'une ligne de log (horodatage Loki en nanosecondes) ; None si illisible."""
+    try:
+        return max(0, int((now - int(ts_ns) / 1e9) // 60))
+    except (TypeError, ValueError):
+        return None
+
+
 def find_problems(namespace: str, minutes: int = 30, pod_prefix: str = "") -> dict:
-    from .agent import build_logql   # validation du namespace / préfixe (même règles que search_logs)
-    q = build_logql(namespace, pod_prefix) + f" |~ `{LOKI_FILTER}`"
+    from .agent import build_logql, exclude_own_queries   # validation du namespace / préfixe (mêmes règles que search_logs)
+    # On exclut les lignes de Loki qui citent notre propre requête (elle contient « status=failed », « error »...).
+    q = exclude_own_queries(build_logql(namespace, pod_prefix)) + f" |~ `{LOKI_FILTER}`"
     data = clients.logs_range(q, minutes, config.MAX_LOG_LINES)
     rows = []
     for st in data.get("data", {}).get("result", []):
@@ -48,12 +58,17 @@ def find_problems(namespace: str, minutes: int = 30, pod_prefix: str = "") -> di
         for ts, line in st.get("values", []):
             rows.append((ts, who, line))
     rows.sort(reverse=True)
+    now = time.time()
     cats: dict[str, dict] = {}
     for ts, who, line in rows:
         c = classify(line)
         if c is None:
             continue
-        slot = cats.setdefault(c, {"lignes": 0, "exemples": []})
+        age = _age_min(ts, now)
+        # Les lignes sont triées de la plus récente à la plus ancienne : la première rencontrée est la dernière
+        # occurrence, la dernière rencontrée la première. Sert à dire si un problème est en cours ou déjà passé.
+        slot = cats.setdefault(c, {"lignes": 0, "derniere_il_y_a_min": age, "exemples": []})
+        slot["premiere_il_y_a_min"] = age
         slot["lignes"] += 1
         if len(slot["exemples"]) < _EXAMPLES:
             slot["exemples"].append(f"{who}: {line[:_LINE_CHARS]}" + (" …" if len(line) > _LINE_CHARS else ""))

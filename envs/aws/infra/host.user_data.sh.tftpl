@@ -1,0 +1,67 @@
+#!/bin/bash
+# Démarrage de l'hôte g13-p5 : Docker, Compose, secrets lus dans SSM, puis assistant + Open WebUI.
+# Le journal est dans /var/log/g13-host-setup.log (et /var/log/cloud-init-output.log).
+# Repères lus par scripts/aws-up.sh dans la sortie console de l'instance : « G13-OK » (fini) et « G13-ECHEC » (arrêt).
+# Chaque étape qui dépend du réseau ou d'AWS est retentée : un incident passager ne doit pas laisser l'hôte inutilisable,
+# car ce script ne s'exécute qu'une seule fois par instance (relance : scripts/aws-redo-host.sh).
+set -Eeuo pipefail
+exec > >(tee -a /var/log/g13-host-setup.log) 2>&1
+trap 'echo "G13-ECHEC : commande en erreur à la ligne $LINENO"' ERR
+echo "== démarrage $(date -u +%FT%TZ)"
+
+retry() { # retry commande... : 6 essais, 15 s entre deux
+  local n=0
+  until "$@"; do
+    n=$((n+1))
+    if [ "$n" -ge 6 ]; then echo "G13-ECHEC : toujours en échec après 6 essais : $*"; return 1; fi
+    echo "essai $n/6 échoué : $*"
+    sleep 15
+  done
+}
+
+# Mémoire : 2 Gio seulement sur t3.small, pas de swap par défaut. Un fichier d'échange de 2 Gio évite qu'un pic de mémoire
+# d'Open WebUI (démarrage, modèle d'embedding) ne fasse tuer un conteneur. Filet de sécurité, pas une mesure.
+if ! swapon --show | grep -q /swapfile; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+fi
+free -m
+
+retry dnf install -y docker
+systemctl enable --now docker
+mkdir -p /usr/local/lib/docker/cli-plugins
+retry curl -fsSL --retry 3 "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+
+umask 077
+mkdir -p /opt/g13
+cd /opt/g13
+
+fetch_param() { # lit un paramètre SSM chiffré avec le rôle de l'instance (les droits du rôle peuvent mettre quelques secondes à être prêts)
+  aws ssm get-parameter --region ${region} --with-decryption --name "$1" --query Parameter.Value --output text
+}
+registry_login() {
+  fetch_param ${token_param} | docker login ${registry_host} -u ${registry_username} --password-stdin
+}
+
+retry fetch_param ${env_param} > .env
+retry registry_login
+
+cat > compose.yaml <<'COMPOSE'
+${compose}
+COMPOSE
+
+# Les téléchargements reprennent là où ils se sont arrêtés. Mesuré le 19.10.2026 sur Kind : l'image d'Open WebUI (1,46 Go)
+# a mis 12 min 44 s ; sur AWS, durée inconnue.
+retry docker compose pull
+docker compose up -d
+docker compose ps
+echo "== terminé $(date -u +%FT%TZ)"
+echo "G13-OK"
+
+# Mesure de mémoire quelques minutes après le démarrage (relevé de réalisation, utile pour juger t3.small).
+( sleep 240; echo "== mesures mémoire $(date -u +%FT%TZ)"; free -m; docker stats --no-stream ) >> /var/log/g13-host-setup.log 2>&1 &

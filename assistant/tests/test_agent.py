@@ -1,5 +1,7 @@
 """Teste la boucle agent -> outil -> réponse avec un faux modèle (PAS qwen3 : le comportement réel du modèle
 n'est pas testé ici)."""
+import json
+
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain.agents import create_agent
@@ -44,7 +46,7 @@ def test_tool_error_is_returned_to_model(monkeypatch):
 
 
 def test_no_write_tools():
-    assert all(t.name in {"promql_instant", "promql_range", "metric_label_values", "search_logs", "log_label_values", "find_problems_in_namespace"}
+    assert all(t.name in {"promql_instant", "promql_range", "metric_label_values", "search_logs", "log_label_values", "find_problems_in_namespace", "describe_pod"}
                for t in ag.TOOLS)
 
 
@@ -69,7 +71,8 @@ def test_llm_stats_from_metadata():
 def test_build_logql_scoped_and_escaped():
     assert ag.build_logql("mimir") == '{namespace="mimir"}'
     q = ag.build_logql("mimir", "mimir-compactor", "status=failed")
-    assert q == '{namespace="mimir", pod=~"mimir-compactor.*"} |~ `(?i)status=failed`'
+    assert q == '{namespace="mimir"} | pod=~"mimir-compactor.*" |~ `(?i)status=failed`'
+    assert ag.build_logql("mimir", pod_exact="mimir-ruler-1") == '{namespace="mimir"} | pod="mimir-ruler-1"'
 
 
 def test_build_logql_rejects_injection():
@@ -79,3 +82,214 @@ def test_build_logql_rejects_injection():
             ag.build_logql(bad)
     with pytest.raises(ValueError):
         ag.build_logql("mimir", 'x"}')
+
+
+def test_build_llm_switches_on_provider(monkeypatch):
+    import pytest
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")          # faux identifiants : aucun appel réseau à la construction
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "bedrock")
+    llm = ag.build_llm()
+    assert type(llm).__name__ == "ChatBedrockConverse" and llm.model_id == ag.config.BEDROCK_MODEL_ID
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "ollama")
+    assert type(ag.build_llm()).__name__ == "ChatOllama"
+    monkeypatch.setattr(ag.config, "LLM_PROVIDER", "autre")
+    with pytest.raises(ValueError):
+        ag.build_llm()
+
+
+def test_llm_stats_bedrock_and_text_blocks():
+    m = AIMessage(content="x", usage_metadata={"input_tokens": 91, "output_tokens": 35, "total_tokens": 126},
+                  response_metadata={"metrics": {"latencyMs": [439]}})
+    assert ag.llm_stats([m]) == [{"total_s": 0.4, "prompt_tokens": 91, "output_tokens": 35}]
+    assert ag.text_of([{"type": "text", "text": "a"}, {"type": "tool_use", "name": "t"}, {"type": "text", "text": "b"}]) == "ab"
+    assert ag.text_of("plain") == "plain"
+
+
+def test_chat_takes_history_and_returns_plain_text():
+    a = create_agent(FakeToolModel(messages=iter([AIMessage(content=[{"type": "text", "text": "Réponse"}])])),
+                     ag.TOOLS, system_prompt="x")
+    r = ag.chat([("user", "salut"), ("assistant", "bonjour"), ("user", "et la météo ?")], agent=a)
+    assert r["answer"] == "Réponse"
+
+
+def test_system_prompt_scopes_to_cluster_supervision():
+    assert "QUE la supervision" in ag.SYSTEM_PROMPT and "{context}" in ag.SYSTEM_PROMPT
+
+
+def test_usual_metrics_line_lists_present_and_absent():
+    from app import agent
+    line = agent.usual_metrics_line(["up", "kube_pod_status_phase", "autre_metrique"])
+    present, absent = line.split("\n")
+    assert "PRÉSENTES" in present and "kube_pod_status_phase" in present and "node_memory_MemAvailable_bytes" not in present
+    assert "ABSENTES" in absent and "node_memory_MemAvailable_bytes" in absent and "up," not in absent.replace("up", "up,", 0)
+
+
+def test_cluster_context_includes_usual_metrics_and_survives_failure(monkeypatch):
+    from app import agent, clients
+    monkeypatch.setattr(agent, "_ctx_cache", None)
+    monkeypatch.setattr(clients, "metrics_label_values", lambda label: {"data": ["x"]})
+    monkeypatch.setattr(clients, "logs_labels", lambda: {"data": ["namespace"]})
+    monkeypatch.setattr(clients, "logs_label_values", lambda label: {"data": ["mimir"]})
+    monkeypatch.setattr(clients, "metrics_names", lambda: {"data": ["container_memory_working_set_bytes"]})
+    ctx = agent.cluster_context(ttl_s=0)
+    assert "PRÉSENTES dans Mimir : container_memory_working_set_bytes" in ctx
+    def boom():
+        raise clients.UpstreamError("Mimir injoignable")
+    monkeypatch.setattr(clients, "metrics_names", boom)
+    assert "liste indisponible" in agent.cluster_context(ttl_s=0)
+
+
+def test_system_prompt_formats_with_context():
+    from app import agent
+    text = agent.SYSTEM_PROMPT.format(context="CTX")
+    assert 'phase="Running"' in text and "CTX" in text
+
+
+def test_search_logs_excludes_the_assistants_own_queries(monkeypatch):
+    from app import agent, clients
+    seen = {}
+    def fake(q, m, l):
+        seen["q"] = q
+        return {"data": {"result": []}}
+    monkeypatch.setattr(clients, "logs_range", fake)
+    out = agent.search_logs.invoke({"namespace": "loki", "contains": "error"})
+    assert "(?i)error" in seen["q"] and seen["q"].endswith("`(\\(\\?i\\)|%28%3Fi%29)`")
+    assert "requête LogQL" in out
+
+
+def test_chat_prints_a_trace_of_tool_calls(capsys):
+    """Le journal du conteneur doit montrer les outils appelés et leur résultat (diagnostic d'une réponse fausse)."""
+    from langchain_core.messages import AIMessage, ToolMessage
+    from app import agent
+
+    class FakeAgent:
+        def invoke(self, payload, config=None):
+            return {"messages": [
+                AIMessage(content="", tool_calls=[{"name": "promql_instant", "args": {"query": "up"}, "id": "t1"}]),
+                ToolMessage(content="1 série", tool_call_id="t1"),
+                AIMessage(content="Réponse finale"),
+            ]}
+
+    res = agent.chat([("user", "Où est le pod ?")], agent=FakeAgent())
+    out = capsys.readouterr().out
+    assert out.startswith("TRACE ") and '"promql_instant"' in out and "1 série" in out and "Où est le pod" in out
+    assert res["answer"] == "Réponse finale"
+
+
+class _SeqAgent:
+    """Faux agent : renvoie les réponses données, dans l'ordre, et garde les conversations reçues."""
+    def __init__(self, replies):
+        self.replies, self.calls = list(replies), []
+
+    def invoke(self, payload, config=None):
+        self.calls.append(payload["messages"])
+        return {"messages": self.replies.pop(0)}
+
+
+def _no_tool(text):
+    from langchain_core.messages import AIMessage
+    return [AIMessage(content=text)]
+
+
+def _with_tool(text):
+    from langchain_core.messages import AIMessage, ToolMessage
+    return [AIMessage(content="", tool_calls=[{"name": "promql_instant", "args": {"query": "up"}, "id": "t1"}]),
+            ToolMessage(content="ok", tool_call_id="t1"), AIMessage(content=text)]
+
+
+def test_chat_retries_once_when_absence_is_claimed_without_any_tool(capsys):
+    from app import agent
+    fake = _SeqAgent([_no_tool("Aucun pod de ce nom. Vérifications effectuées."), _with_tool("Le pod existe, il redémarre.")])
+    res = agent.chat([("user", "Décris le pod appli-demo")], agent=fake)
+    assert res["answer"] == "Le pod existe, il redémarre." and len(fake.calls) == 2
+    assert "aucun outil" in fake.calls[1][-1][1] and '"retried": true' in capsys.readouterr().out
+
+
+def test_chat_does_not_retry_a_refusal_or_an_answer_that_used_a_tool():
+    from app import agent
+    refus = _SeqAgent([_no_tool("Je suis limité à la supervision du cluster.")])
+    assert agent.chat([("user", "Quelle météo ?")], agent=refus)["answer"].startswith("Je suis limité") and len(refus.calls) == 1
+    outil = _SeqAgent([_with_tool("Aucun pod en échec.")])
+    agent.chat([("user", "Des pods en échec ?")], agent=outil)
+    assert len(outil.calls) == 1
+
+
+def test_prompt_says_context_does_not_list_pods():
+    from app import agent
+    assert "ne liste PAS les pods" in agent.SYSTEM_PROMPT
+
+
+def _tool_named(name, text):
+    from langchain_core.messages import AIMessage, ToolMessage
+    return [AIMessage(content="", tool_calls=[{"name": name, "args": {}, "id": "t9"}]),
+            ToolMessage(content="ok", tool_call_id="t9"), AIMessage(content=text)]
+
+
+def test_chat_retries_when_a_pod_absence_is_proved_only_by_logs(capsys):
+    """F3 du 27.10.2026 : « Aucun pod `base-de-donnees` n'existe », tiré de recherches de logs vides."""
+    from app import agent
+    fake = _SeqAgent([_tool_named("search_logs", "Aucun pod `base-de-donnees` n'existe."),
+                      _tool_named("describe_pod", "Pas de pod base-de-donnees (describe_pod : trouve=false).")])
+    res = agent.chat([("user", "Analyse de cause racine ?")], agent=fake)
+    assert len(fake.calls) == 2 and "describe_pod" in fake.calls[1][-1][1] and "trouve=false" in res["answer"]
+
+
+def test_chat_keeps_a_pod_absence_proved_by_metrics_or_unrelated_wording():
+    from app import agent
+    prouve = _SeqAgent([_tool_named("describe_pod", "Aucun pod `base-de-donnees` n'existe (describe_pod).")])
+    agent.chat([("user", "q")], agent=prouve)
+    assert len(prouve.calls) == 1
+    autre = _SeqAgent([_tool_named("find_problems_in_namespace", "Aucun pod en échec dans mimir.")])
+    agent.chat([("user", "q")], agent=autre)
+    assert len(autre.calls) == 1
+
+
+def test_prompt_demands_findings_and_hypotheses_and_forbids_proof_by_empty_logs():
+    from app import agent
+    assert "« Constats »" in agent.SYSTEM_PROMPT and "« Hypothèses »" in agent.SYSTEM_PROMPT
+    assert "ne prouvent PAS" in agent.SYSTEM_PROMPT and "`chronologie_texte`" in agent.SYSTEM_PROMPT and "routine" in agent.SYSTEM_PROMPT
+
+
+def _condition_series():
+    """12 séries comme celles d'un nœud réel (F5, 28.10.2026) : 4 conditions x 3 états, ~340 caractères chacune."""
+    out = []
+    for cond in ("DiskPressure", "MemoryPressure", "PIDPressure", "Ready"):
+        for status in ("false", "true", "unknown"):
+            on = (status == "true") == (cond == "Ready")
+            out.append({"metric": {"__name__": "kube_node_status_condition", "cluster": "g13-p5-eks",
+                                   "condition": cond, "instance": "10.13.0.186:8080",
+                                   "job": "integrations/kubernetes/kube-state-metrics",
+                                   "k8s_cluster_name": "g13-p5-eks", "node": "ip-10-13-0-117.ec2.internal",
+                                   "source": "kubernetes", "status": status},
+                        "value": [1793186973.992, "1" if on else "0"]})
+    return out
+
+
+def test_factor_common_labels_is_lossless():
+    import copy
+    original = _condition_series()
+    data = {"status": "success", "data": {"resultType": "vector", "result": copy.deepcopy(original)}}
+    out = ag.factor_common_labels(data)
+    common = out["data"]["labels_communs"]
+    assert common["node"] == "ip-10-13-0-117.ec2.internal" and common["job"].endswith("kube-state-metrics")
+    for before, after in zip(original, out["data"]["result"]):
+        assert after["metric"] == {"condition": before["metric"]["condition"], "status": before["metric"]["status"]}
+        assert {**common, **after["metric"]} == before["metric"]
+        assert after["value"] == before["value"]
+
+
+def test_node_conditions_fit_in_tool_limit_and_ready_true_is_kept():
+    raw = json.dumps({"data": {"result": _condition_series()}}, ensure_ascii=False)
+    assert len(raw) > ag._MAX_TOOL_CHARS          # c'est ce qui coupait la série Ready/true
+    res = ag._out(ag._with_units, lambda q: {"data": {"result": _condition_series()}}, "kube_node_status_condition")
+    assert "tronqué" not in res
+    kept = [s for s in json.loads(res)["data"]["result"] if s["metric"] == {"condition": "Ready", "status": "true"}]
+    assert kept and kept[0]["value"][1] == "1"
+
+
+def test_factor_common_labels_leaves_single_series_and_distinct_series_alone():
+    one = {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}]}}
+    assert ag.factor_common_labels(one) == {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}]}}
+    two = {"data": {"result": [{"metric": {"a": "1"}, "value": [1, "2"]}, {"metric": {"a": "2"}, "value": [1, "3"]}]}}
+    assert "labels_communs" not in ag.factor_common_labels(two)["data"]

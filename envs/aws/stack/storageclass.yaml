@@ -1,0 +1,15 @@
+# Classe de stockage par défaut pour Mimir, Loki et Grafana (constaté le 24.10.2026 : le cluster EKS n'a que `gp2`,
+# non marquée par défaut, et les volumes restent en Pending). Provisionneur : pilote EBS CSI (module complémentaire
+# aws-ebs-csi-driver). reclaimPolicy Delete : supprimer un PVC supprime le volume EBS (évite des volumes orphelins).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

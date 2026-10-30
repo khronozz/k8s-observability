@@ -1,0 +1,9 @@
+# Copier en terraform.tfvars (ignoré par Git) et compléter.
+# Version de Kubernetes : `aws eks describe-cluster-versions` (choisir une version proposée par AWS).
+kubernetes_version = "X.YY"
+# Votre adresse IP publique au format CIDR (voir scripts/aws-up.sh pour la détecter). Jamais 0.0.0.0/0.
+admin_cidrs = ["A.B.C.D/32"]
+# Hôte EC2 (assistant + Open WebUI) : image poussée dans le registre GitLab (linux/amd64) et jeton de déploiement.
+# Le JETON ne va jamais ici : voir scripts/aws-up.sh (.work/registry-token).
+assistant_image   = "registry.forge.hefr.ch/<utilisateur>/k8s-observability/assistant:0.5.12"
+registry_username = "gitlab+deploy-token-NNN"

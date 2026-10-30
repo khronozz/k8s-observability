@@ -47,6 +47,8 @@ const TAGS = {
   val: ['À VALIDER', 'FCE4D6'],
   obs: ['OBSERVÉ SUR KIND', 'DDEBF7'],
   code: ['VÉRIFIÉ DANS LE CODE', 'E2F0D9'],
+  aws: ['OBSERVÉ AVEC LE CLI AWS', 'DDEBF7'],
+  eks: ['OBSERVÉ SUR AWS', 'DDEBF7'],
 };
 function note(kind, text) {
   const [label, fill] = TAGS[kind];
@@ -84,19 +86,24 @@ const dec = require('./decisions.js');
 const c = [];
 
 c.push(new Paragraph({ children: [new TextRun({ text: 'Stack d’observabilité Kubernetes pour le Projet 5', bold: true, size: 40 })], spacing: { after: 80 } }));
-c.push(new Paragraph({ children: [new TextRun({ text: 'Monitoring Kubernetes clusters with AI — mise en place locale (Kind) puis sur Switch Cloud', size: 26, color: '595959' })], spacing: { after: 80 } }));
-c.push(new Paragraph({ children: [new TextRun({ text: 'CloudSys / Cloud Services and Systems — HES-SO Master — document de travail, mis à jour le 19 octobre 2026', size: 20, color: '595959' })], spacing: { after: 240 } }));
+c.push(new Paragraph({ children: [new TextRun({ text: 'Monitoring Kubernetes clusters with AI — mise en place locale (Kind), puis cible AWS', size: 26, color: '595959' })], spacing: { after: 80 } }));
+c.push(new Paragraph({ children: [new TextRun({ text: 'CloudSys / Cloud Services and Systems — HES-SO Master — document de travail, mis à jour le 25 octobre 2026', size: 20, color: '595959' })], spacing: { after: 240 } }));
 
 c.push(new TableOfContents('Table des matières', { hyperlink: true, headingStyleRange: '1-2' }));
 
 // 0
 c.push(H1('0. À lire d’abord : ce qui a été vérifié, et ce qui ne l’a pas été'));
-c.push(P('Ce document décrit comment installer **k8s-monitoring (Alloy), Loki, Mimir (sans MinIO), Grafana et Open WebUI**, d’abord à la main sur un cluster Kind, puis de façon automatisée sur Switch Cloud. Le « Step 3 » (Ollama + image FastAPI avec agent LangChain/LangGraph + liaison avec Open WebUI) a été réalisé en local sur Kind : la section 4 décrit ce qui a été fait et mesuré, les décisions retenues et leurs justifications.'));
-c.push(P('**État des vérifications (16.10.2026).** L’environnement dans lequel ce document a été rédigé n’avait ni Kind, ni Helm, ni OpenTofu avec ses fournisseurs, et ne pouvait pas joindre ghcr.io, get.helm.sh ou releases.hashicorp.com : je n’ai donc exécuté aucune commande moi-même. **La partie 1 (installation manuelle sur Kind) a en revanche été exécutée par un membre du groupe sur un Mac, du 14 au 16 octobre 2026, et les sorties des commandes m’ont été transmises.** Ce qui a été constaté ainsi porte l’étiquette « observé sur Kind ». **Mise à jour du 19.10.2026 :** la partie de l’automatisation qui vise Kind (OpenTofu, scripts, Makefile, y compris Ollama, l’assistant et la configuration d’Open WebUI) a été exécutée par le même membre du groupe les 18 et 19 octobre, avec un test de fumée de 6 contrôles ; les résultats, les échecs rencontrés et leurs corrections sont en section 3.7. **Le déploiement sur Switch Cloud (dossier `envs/switch`, scripts `sck-*` et `scs3-*`) n’a jamais été exécuté.** Le Step 3 avait d’abord été exécuté à la main sur Kind (15 et 16 octobre). Cinq étiquettes signalent le niveau de confiance :'));
+c.push(P('Ce document décrit comment installer **k8s-monitoring (Alloy), Loki, Mimir (sans MinIO), Grafana et Open WebUI**, d’abord à la main sur un cluster Kind, puis de façon automatisée (Switch Cloud, abandonné le 22.10.2026 au profit d’AWS : chapitre 6). Le « Step 3 » (Ollama + image FastAPI avec agent LangChain/LangGraph + liaison avec Open WebUI) a été réalisé en local sur Kind : la section 4 décrit ce qui a été fait et mesuré, les décisions retenues et leurs justifications.'));
+c.push(P('**Mise à jour du 22.10.2026.** Le professeur a validé le travail local et demandé trois changements pour le cloud : **AWS** (région `us-east-1`) à la place de Switch Cloud, un **modèle public** (Amazon Bedrock) à la place du LLM hébergé, et un **assistant hors du cluster surveillé** (instance EC2). Le chapitre 6 consigne ces décisions, leurs justifications et ce qui a été vérifié ; la section 4.12 décrit la version 0.5.0 de l’assistant. Switch Cloud est abandonné ; les sections qui le décrivent sont conservées pour mémoire.'));
+c.push(P('**Mise à jour du 25.10.2026 (état dépassé : voir la mise à jour du 28.10.2026 ci-dessous).** L’infrastructure AWS (réseau, EKS, S3, droits) a été créée puis détruite avec des scripts le 23.10, puis recréée le 24.10. Mimir et Loki ont démarré sur EKS, mais Alloy et Grafana n’ont jamais été installés : les droits IAM et EKS de l’utilisateur ont été retirés le 24.10 à 15h17, sans cause connue, alors qu’un cluster de test était en marche. L’hôte EC2 (assistant et Open WebUI) est écrit et sa syntaxe est validée, mais il n’a jamais été lancé. Le plan de tests est écrit et ne contient encore aucun résultat. Détail : sections 6.10 à 6.13'));
+c.push(P('**Mise à jour du 28.10.2026.** Les droits AWS sont revenus le 26.10 et le déploiement complet (infrastructure, pile Alloy, Mimir, Loki, Grafana, et hôte EC2) a été exécuté le 27.10 en 19 min 12 s. L’assistant tourne en version 0.5.12 sur l’hôte, avec Amazon Bedrock. Les 15 scénarios du plan de tests ont été exécutés les 27 et 28.10 ; leurs résultats, avec les défauts non corrigés, sont dans `docs/tests/plan-de-tests.md` et `docs/plan-amelioration.md`. Les captures de la démonstration sont dans `docs/demo/`, et l’architecture à jour est `docs/architecture/Group-13-Architecture-v3.docx`. **Ce guide n’a pas été réécrit** : les sections 6.10 à 6.13 décrivent l’état au 25.10 et sont dépassées sur les points signalés ; il n’a pas de chapitre sur le déploiement AWS du 27.10 ni sur les versions 0.5.1 à 0.5.12 de l’assistant (voir le CHANGELOG).'));
+c.push(P('**État des vérifications (16.10.2026).** L’environnement dans lequel ce document a été rédigé n’avait ni Kind, ni Helm, ni OpenTofu avec ses fournisseurs, et ne pouvait pas joindre ghcr.io, get.helm.sh ou releases.hashicorp.com : je n’ai donc exécuté aucune commande moi-même. **La partie 1 (installation manuelle sur Kind) a en revanche été exécutée par un membre du groupe sur un Mac, du 14 au 16 octobre 2026, et les sorties des commandes m’ont été transmises.** Ce qui a été constaté ainsi porte l’étiquette « observé sur Kind ». **Mise à jour du 19.10.2026 :** la partie de l’automatisation qui vise Kind (OpenTofu, scripts, Makefile, y compris Ollama, l’assistant et la configuration d’Open WebUI) a été exécutée par le même membre du groupe les 18 et 19 octobre, avec un test de fumée de 6 contrôles ; les résultats, les échecs rencontrés et leurs corrections sont en section 3.7. **Le déploiement sur Switch Cloud (dossier `envs/switch`, scripts `sck-*` et `scs3-*`) n’a jamais été exécuté.** Le Step 3 avait d’abord été exécuté à la main sur Kind (15 et 16 octobre). Sept étiquettes signalent le niveau de confiance :'));
 c.push(note('obs', 'la commande a été exécutée sur le cluster Kind d’un membre du groupe et le résultat a été constaté (sortie de commande, requête, capture d’écran).'));
+c.push(note('aws', 'la commande a été exécutée avec le CLI AWS par un membre du groupe, qui m’a transmis la sortie ; elle ne fait que lire (22.10.2026) ou, pour le test de l’assistant avec Bedrock, un appel de quelques fractions de cent.'));
+c.push(note('eks', 'une commande ou un script a été exécuté sur AWS (EKS, S3, EC2) par un membre du groupe, qui a transmis les sorties (23 au 25.10.2026).'));
 c.push(note('doc', 'le point a été lu dans la documentation officielle (lien dans la section Sources).'));
 c.push(note('code', 'le point a été lu dans le code source (Open WebUI v0.12.0, code de l’assistant) ; le code lu est celui de la version déployée, mais lire n’est pas exécuter.'));
-c.push(note('notest', 'la commande ou le code est cohérent avec la doc mais n’a jamais été exécuté. C’est le cas de tout ce qui vise Switch Cloud (`envs/switch`, scripts `sck-*` et `scs3-*`, `switch-image`, `switch-apply`).'));
+c.push(note('notest', 'la commande ou le code est cohérent avec la doc mais n’a jamais été exécuté. C’est le cas de tout ce qui vise Switch Cloud, abandonné (`envs/switch`, scripts `sck-*` et `scs3-*`, `switch-image`, `switch-apply`), et de tout ce qui vise AWS au-delà de ce qui est observé aux sections 6.10 et 6.11.'));
 c.push(note('val', 'un détail n’a pas été trouvé dans la doc lue (clé de configuration, nom de service, format de sortie). Il est repris dans la liste des points ouverts (section 5).'));
 c.push(P('Les fichiers (OpenTofu, valeurs Helm, scripts, Makefile) sont dans le dépôt GitLab du groupe (dossier racine `k8s-observability`) ; ce document est dans `docs/`, ses sources dans `docs/guide-src/` (`make docs` le régénère). La partie 1 et le Step 3 ont été déroulés sur Kind et ce document a été corrigé en conséquence ; la partie 2 reste à tester. Le code de l’assistant est dans `assistant/`, ses manifestes dans `manual/local/`.'));
 
@@ -127,6 +134,8 @@ c.push(...table(
   [1700, 3000, 1400, 3538]));
 c.push(note('doc', 'dépôts : `grafana` = `https://grafana.github.io/helm-charts` (Mimir, k8s-monitoring) ; `grafana-community` = `https://grafana-community.github.io/helm-charts` (Loki, depuis le 16.03.2026) ; Open WebUI = `https://helm.openwebui.com/`.'));
 c.push(note('obs', 'chart Grafana : `grafana-community/grafana` 14.0.0 (Grafana 13.2.4) a été installé et fonctionne. L’ancien `grafana/grafana` était, au même moment, en 10.5.15 (Grafana 12.3.1). Une annonce Grafana (13.01.2026) confirme une migration vers `grafana-community`, mais ne cite pas le chart Grafana : que l’ancien chart soit officiellement abandonné n’est pas établi.'));
+
+c.push(P('**Mise à jour du 22.10.2026.** Le schéma ci-dessus décrit la version locale. Pour le déploiement cloud, l’architecture évolue (AWS, Amazon Bedrock à la place d’Ollama, assistant et Open WebUI sur une instance EC2 hors du cluster) : voir le chapitre 6.'));
 
 // 2 Partie 1
 c.push(H1('2. Partie 1 — Installation manuelle en local (Kind, macOS)'));
@@ -259,7 +268,8 @@ c.push(...code('kind delete cluster --name k8s-ai-monitoring'));
 c.push(P('Cela supprime le cluster, donc aussi Garage et toutes les données.'));
 
 // 3 Partie 2
-c.push(H1('3. Partie 2 — Automatisation et déploiement sur Switch Cloud'));
+c.push(H1('3. Partie 2 — Automatisation (local) ; Switch Cloud abandonné'));
+c.push(P('**Mise à jour du 22.10.2026 : Switch Cloud est abandonné** (retour du professeur ; chapitre 6). Les sections 3.4 et 3.5 sont conservées pour mémoire : elles n’ont jamais été exécutées et ne sont plus maintenues. Le reste de cette partie (automatisation locale) reste valable.'));
 c.push(H2('3.1 Choix de l’outil d’infrastructure as code'));
 c.push(P('Vous aviez demandé un langage de script pour tout déployer, en local comme dans le cloud, et m’avez laissé le choix. J’ai retenu **OpenTofu avec le provider Helm** (option que vous avez confirmée comme recommandée). **Vocabulaire :** Terraform est l’outil d’origine (HashiCorp), dont la licence n’est plus libre depuis 2023 ; OpenTofu en est un fork libre (Linux Foundation) qui lit les mêmes fichiers `.tf` et utilise les mêmes fournisseurs ; seule la commande change (`tofu` au lieu de `terraform`). Nous avons décidé d’utiliser **OpenTofu** seul : licence libre, `tofu` est la valeur par défaut du Makefile, et c’est l’outil avec lequel le code a été validé (version 1.10.6 côté rédaction, 1.13.1 sur le Mac du groupe). « Terraform » ne désigne plus dans ce document que le format des fichiers (`terraform.tfvars`, `.tfstate`) ou le nom du fournisseur.'));
 c.push(...table(
@@ -282,7 +292,8 @@ c.push(...code(
 │   └─ values/*.yaml.tftpl             valeurs Helm paramétrées
 ├─ charts/assistant/                   chart Helm local de l’assistant (image, variables d’environnement, sonde)
 ├─ envs/local/                         Garage + module (cluster Kind)
-├─ envs/switch/                        module seul (cluster SCK + SCS3)
+├─ envs/switch/                        module seul (cluster SCK + SCS3) : ABANDONNÉ, jamais exécuté
+├─ envs/aws/                           (à venir) EKS, S3, instance EC2
 ├─ scripts/
 │   ├─ preflight.sh, gen-secrets.sh    pré-contrôles ; secrets aléatoires (jamais dans le dépôt)
 │   ├─ garage-init.sh                  layout, buckets, clé Garage (local)
@@ -498,8 +509,8 @@ c.push(...table(
   ['#', 'Constat', 'Cause', 'Décision', 'Statut'],
   [
     ['1', 'Open WebUI répond « je n’ai pas cet outil » alors qu’il est activé ; aucun `POST /tools/ask` ne parvient à l’assistant.', 'Établie : Open WebUI envoie 40 outils (39 intégrés + le nôtre) ; le prompt fait environ 5 640 tokens et Ollama le ramène à 2050 (log : `truncating input prompt limit=2050 prompt=5623` puis `5640` deux fois). D’après le code, notre outil est le premier de la liste ; que ce soit lui qui soit perdu est une déduction cohérente avec le comportement observé.', 'Décocher « Outils intégrés » pour `qwen3:8b` : le premier prompt tombe à 222 tokens.', 'Résolu (observé)'],
-    ['2', 'La fenêtre de contexte d’Ollama est d’environ 2048 tokens (limite 2050 dans le log).', 'Non expliquée : la doc annonce 4096 par défaut et `ollama run` affiche 4096 ; Open WebUI ne fixe pas de `num_ctx` dans son code.', 'Fixer 8192 explicitement pour le modèle, comme l’agent.', 'Appliqué ; l’écart avec la doc reste à comprendre'],
-    ['3', 'La reformulation par Open WebUI ajoute des conclusions non fondées (« toutes passées avec succès », « fonctionnement normal »).', 'Établie : ces phrases viennent du second passage d’Open WebUI (le modèle les ajoute après l’outil). La réponse brute de l’agent est, elle, un peu large (« absence d’erreurs ou d’échecs » alors que 2 lignes seulement ont été examinées).', 'Prompt système de recopie (4.5).', 'Atténué sur 4 essais (3 questions différentes) ; garantie non démontrée'],
+    ['2', '**CADUC (Switch abandonné le 22.10.2026)** : La fenêtre de contexte d’Ollama est d’environ 2048 tokens (limite 2050 dans le log).', 'Non expliquée : la doc annonce 4096 par défaut et `ollama run` affiche 4096 ; Open WebUI ne fixe pas de `num_ctx` dans son code.', 'Fixer 8192 explicitement pour le modèle, comme l’agent.', 'Appliqué ; l’écart avec la doc reste à comprendre'],
+    ['3', '**CADUC (Switch abandonné le 22.10.2026)** : La reformulation par Open WebUI ajoute des conclusions non fondées (« toutes passées avec succès », « fonctionnement normal »).', 'Établie : ces phrases viennent du second passage d’Open WebUI (le modèle les ajoute après l’outil). La réponse brute de l’agent est, elle, un peu large (« absence d’erreurs ou d’échecs » alors que 2 lignes seulement ont été examinées).', 'Prompt système de recopie (4.5).', 'Atténué sur 4 essais (3 questions différentes) ; garantie non démontrée'],
     ['4', 'Valeurs de mémoire fausses d’un facteur 10 : open-webui « 7,11 GB » et grafana « 4,07 GB ».', 'Relevé direct par `/metrics/query` quelques minutes plus tard : 708 096 000 octets (675,3 MiB, soit 0,71 Go) et 483 201 024 octets (460,8 MiB, soit 0,48 Go). Les valeurs affichées étaient environ dix fois trop grandes. L’erreur apparaît déjà dans le résultat dépliable de l’outil, donc dans la conversion faite par le modèle de l’agent, pas dans la recopie par Open WebUI. Les relevés ne sont pas simultanés : l’écart exact n’est pas établi.', 'Conversion en Python (champ `lisible`, version 0.4.1).', 'Corrigé et vérifié le 17.10 : la réponse de `/ask` est identique aux valeurs `lisible` relevées juste avant et juste après (un seul essai)'],
     ['5', 'Le réglage « Appel de fonction » sur « Natif » semblait devoir aider.', 'Dans le code, « Par défaut » est déjà le mode natif.', 'Aucune action.', 'Sans effet'],
     ['6', 'Le 17.10, Open WebUI affiche ollama à 3,09 GiB ; un relevé direct une minute plus tard donne 6,70 GiB.', 'Établie : les deux valeurs sont justes. Une requête sur période dans Mimir donne pour le pod ollama 0,06 GiB jusqu’à 19:41, puis 3,09 GiB à 19:42 (la valeur affichée), 6,42 GiB à 19:43 et 6,70 GiB à 19:44. L’agent a donc interrogé Mimir pendant le chargement du modèle, déchargé depuis plusieurs minutes (log d’Ollama : chargement à 19:41:08). Ma première hypothèse (rechargement après un changement de contexte) était fausse : le modèle n’était plus en mémoire.', 'Aucune correction du code : la valeur est exacte à l’instant de la requête. À savoir : la première question après une pause voit une mémoire partielle et paie le chargement.', 'Résolu (observé)'],
@@ -577,22 +588,36 @@ c.push(P('**Constat annexe : une question répétée dans la même conversation 
 c.push(P('**Limite de l’agent mise en évidence.** Aux deux essais d’une même conversation, l’agent a produit deux fois la même requête PromQL aux parenthèses non équilibrées (`… / 1024 / 1024` sans parenthèse fermante), a reçu l’erreur 400 de Mimir, puis a renoncé avec une réponse qui n’en est pas une (« La requête PromQL semble avoir un problème de syntaxe »), relayée fidèlement. Sur les six exécutions avec appel d’outil de ces séries de mesure, deux se terminent ainsi, deux se corrigent après une erreur 400 et deux réussissent du premier coup : trop peu pour donner un taux. Aucun lien avec `think` (l’agent ne lit pas ce paramètre). L’agent est figé en 0.4.3. Le prompt de l’agent contient un contexte du cluster calculé à chaque démarrage (`cluster_context()`), ce qui peut faire varier sa taille (1461 puis 1453 tokens) et, à température 0, ses requêtes ; non vérifié.'));
 c.push(P('**Décision.** `think: false` est la valeur par défaut de `scripts/webui-bootstrap.sh` (`WEBUI_THINK=default` pour ne pas la fixer, `true` pour l’activer). Justification : gain de génération mesuré sur la passe de recopie, recopie toujours fidèle sur les essais, aucune dégradation observée de l’appel d’outil ni de l’identité du modèle. À rouvrir si une série de questions plus large montre une dégradation.'));
 
+c.push(H2('4.12 Assistant 0.5.0 : Amazon Bedrock et interface compatible OpenAI (22 octobre 2026)'));
+c.push(P('Le retour du professeur du 22.10.2026 (chapitre 6) remplace Ollama par un modèle public pour le déploiement cloud. L’assistant a donc été modifié de façon **additive** : le comportement local est inchangé (`LLM_PROVIDER=ollama` par défaut, et le module OpenTofu continue de déployer l’image 0.4.3). Changements du commit `f242ee1` (branche `dev/nicolas`) :'));
+c.push(B('**Fournisseur du modèle** : variable `LLM_PROVIDER` (`ollama` ou `bedrock`). Avec `bedrock`, l’agent utilise `ChatBedrockConverse` (bibliothèque `langchain-aws` 1.9.0, épinglée ; son installation a été vérifiée sans modifier les versions déjà figées). Modèle par défaut `mistral.mistral-large-3-675b-instruct`, région `us-east-1`, température 0, plafond de génération de 600 tokens par appel (valeur choisie, non mesurée : la consigne demande 120 mots au plus). Aucune clé dans le code ni dans l’image : le SDK AWS cherche lui-même les identifiants (rôle de l’instance, ou variables d’environnement en développement).'));
+c.push(B('**Interface compatible OpenAI** : `GET /v1/models` et `POST /v1/chat/completions`, avec ou sans flux. Open WebUI voit l’assistant comme un modèle et lui envoie la conversation ; seuls les tours « user » et « assistant » sont transmis à l’agent (le prompt système est celui de l’agent). Le flux est émis en un seul bloc : l’agent n’émet pas de jetons au fil de l’eau, mais Open WebUI demande du flux.'));
+c.push(B('**Règle de périmètre dans le prompt système** : l’assistant ne traite que la supervision du cluster ; pour toute autre question (météo, culture générale, etc.), il répond en une phrase qu’il y est limité, sans appeler d’outil ; il peut répondre à une salutation. Elle répond à la question de test proposée par le professeur (« Quel temps fait-il aujourd’hui ? »).'));
+c.push(B('**Statistiques et texte** : `llm_stats` lit aussi les métadonnées d’usage de Bedrock (tokens, latence) ; le texte des réponses est normalisé (`text_of`), car Bedrock renvoie une liste de blocs.'));
+c.push(note('code', '58 tests automatisés (51 existants et 7 nouveaux), exécutés dans l’environnement de rédaction avec des faux modèles : sélection du fournisseur, statistiques, normalisation du texte, historique de conversation, interface `/v1` (réponse simple, flux, rejet d’une conversation sans tour utilisateur). Ils ne disent rien du comportement réel de Mistral Large 3.'));
+c.push(note('aws', 'image `assistant:0.5.0` construite sur le Mac du groupe (40,6 s, architecture arm64). Premier lancement sans identifiants : `/v1/chat/completions` renvoie « NoCredentialsError » (chemin d’erreur prévu, HTTP 502). Second lancement avec les identifiants du CLI AWS passés par variables d’environnement : la question « Quel temps fait-il aujourd hui ? » est refusée en un seul appel au modèle (« Je suis limité à la supervision du cluster Kubernetes et ne peux pas répondre à cette question. »), avec 1 593 tokens en entrée et 19 en sortie, soit environ 0,0008 $ aux prix de Mistral Large 3 (1 593 × 0,50 + 19 × 1,50, par million). **Un seul essai, une seule formulation.** Le cluster n’était pas joignable (Kind supprimé) : le contexte du cluster était donc absent du prompt, plus court qu’en usage réel.'));
+c.push(P('**Pourquoi l’interface `/v1`.** D’après la documentation d’Open WebUI, il ne se connecte pas directement à Bedrock : il passe par un proxy fourni par AWS, le *Bedrock Access Gateway*. Cela ajouterait un composant à déployer, ce que le choix de Bedrock devait justement éviter. En exposant `/v1`, seul l’assistant parle à Bedrock. Conséquence attendue, **non mesurée** : un enchaînement d’appels au LLM par question au lieu de deux (aujourd’hui le modèle d’Open WebUI appelle l’outil, puis l’agent appelle son propre modèle), et un refus hors sujet traité par l’agent plutôt que par un modèle intermédiaire.'));
+c.push(H3('Limites'));
+c.push(B('L’interface `/v1` n’a pas d’authentification : elle ne doit être joignable que depuis l’hôte d’Open WebUI.'));
+c.push(B('Non testés : une vraie question d’exploitation avec Bedrock (aucun cluster à interroger lors du test), la fiabilité des requêtes PromQL de Mistral Large 3 (le défaut de parenthèses observé avec `qwen3:8b` en 4.11 peut ou non se reproduire), le comportement via Open WebUI, le refus sur d’autres formulations hors sujet.'));
+c.push(B('La consommation réelle de tokens par question avec outils reste à mesurer : l’estimation de 4 000 à 8 000 tokens par question, donnée avant ce test, n’était pas mesurée.'));
+
 // 5 points ouverts
 c.push(H1('5. Points ouverts et vérifications à faire'));
 c.push(...table(
   ['#', 'Point', 'Comment le lever'],
   [
-    ['1', 'Que veut dire « Mimir sans MinIO » pour le professeur ? Le chart exige un S3 sans MinIO.', 'Question au professeur. En attendant : Garage en local, SCS3 dans le cloud.'],
+    ['1', 'Que veut dire « Mimir sans MinIO » pour le professeur ? Le chart exige un S3 sans MinIO.', 'Question au professeur. Garage en local ; sur AWS, Amazon S3 remplace SCS3 (22.10.2026), la question ne se pose plus pour le cloud.'],
     ['2', 'Endpoint, région, clés et unicité des noms de buckets SCS3.', 'Pages SCS3 « User Authentication » et « Create an S3 Bucket », ou portail.'],
     ['3', 'Votre projet a-t-il accès à SCK et SCS3 ? Quotas et coûts ?', 'Portail Switch Cloud / support.'],
     ['4', 'La collecte s’interrompt-elle quand le Mac passe en veille ? (creux observés dans `count(up)`, cause non vérifiée)', 'Mettre le Mac en veille volontairement, puis observer `count(up)` et les redémarrages de pods.'],
     ['5', 'Métriques de nœud : node-exporter n’est pas déployé. Faut-il l’ajouter (CPU et mémoire des nœuds) ?', 'Décision du groupe ; features `clusterMetrics` / `hostMetrics` du chart.'],
     ['6', 'Format de sortie de `garage key create` attendu par `garage-init.sh`. **Levé** : script exécuté avec succès sur un cluster neuf (18 et 19.10).', 'Rien à faire en local ; à refaire en lecture seule pour SCS3.'],
     ['7', 'Provider Helm 3.x (syntaxe différente) et formules Homebrew.', 'Doc du provider ; `brew search`.'],
-    ['8', 'Création du cluster SCK en automatique (JSON, presets, kubeconfig).', 'Pages Switch « KKP API » et « Manage a Cluster ».'],
+    ['8', '**CADUC (Switch abandonné le 22.10.2026)** : Création du cluster SCK en automatique (JSON, presets, kubeconfig).', 'Pages Switch « KKP API » et « Manage a Cluster ».'],
     ['9', 'Step 3 : `qwen3:8b` et appel d’outils. **Levé en partie** : fonctionne dans l’agent et dans Open WebUI avec les réglages de 4.5 ; fiabilité sur des questions libres non mesurée ; vitesse mesurée (9 à 12 tokens/s).', 'Série de questions de test systématique (cas d’usage du sujet) avec résultats consignés.'],
-    ['10', 'Step 3 : GPU Switch utilisable dans SCK ? Quotas ?', 'Support Switch Cloud.'],
-    ['11', 'Step 3 : registre d’images pour l’image de l’assistant en cloud.', 'Choix du groupe.'],
+    ['10', '**CADUC (Switch abandonné le 22.10.2026)** : Step 3 : GPU Switch utilisable dans SCK ? Quotas ?', 'Support Switch Cloud.'],
+    ['11', 'Step 3 : registre d’images pour l’image de l’assistant en cloud. Voir le point 33.', 'Décidé le 25.10.2026 : registre GitLab.'],
     ['12', 'Fenêtre de contexte d’Ollama : limite de 2050 tokens observée alors que la doc annonce 4096 par défaut.', 'Comprendre pourquoi les requêtes d’Open WebUI étaient limitées à 2050 (logs de démarrage d’Ollama, variables d’environnement du pod).'],
     ['13', 'Comparaison `qwen3:8b` / `gpt-oss:20b` demandée par le sujet : non faite (14 Go ne tiennent probablement pas dans la VM Docker).', 'Ollama installé sur macOS (GPU) ou VM Docker plus grande ; mêmes questions de test.'],
     ['14', 'Version 0.4.1 : unités vérifiées le 17.10 sur une question (réponse identique au relevé direct) ; autres requêtes en octets et autres questions non essayées ; prompt de recopie essayé sur 4 essais seulement (3 questions différentes). L’écart sur ollama (3,09 GiB affiché, 6,70 GiB une minute plus tard) est expliqué : chargement du modèle en cours (voir 4.6, constat 6).', 'Autres questions de test (cas d’usage du sujet).'],
@@ -601,13 +626,24 @@ c.push(...table(
     ['17', 'Assistant sans authentification ; limite mémoire de 512 Mi estimée.', 'NetworkPolicy ou jeton ; `kubectl top pod -n assistant`.'],
     ['18', 'Pourquoi l’interrupteur « API Ollama » d’Open WebUI était-il désactivé au départ ?', 'Non expliqué ; à observer lors d’une réinstallation.'],
     ['19', 'Interprétation de « Mimir sans MinIO » : voir le point 1 (toujours à confirmer).', 'Question au professeur.'],
-    ['20', 'Accès sortant vers `huggingface.co` : Open WebUI télécharge un modèle d’embedding à son premier démarrage.', 'Autoriser l’accès sur SCK ou précharger le modèle ; à vérifier avec le support.'],
-    ['21', 'Architecture des nœuds SCK (amd64 ?) et registre d’images pour `make switch-image` (construction `linux/amd64`).', 'Doc Switch « Flavors » / portail ; choix du registre (point 11).'],
+    ['20', 'Accès sortant vers `huggingface.co` : Open WebUI télécharge un modèle d’embedding à son premier démarrage. Sur AWS, l’instance EC2 devra pouvoir sortir (non vérifié).', 'À vérifier au premier démarrage d’Open WebUI sur l’instance.'],
+    ['21', '**CADUC (Switch abandonné le 22.10.2026)** : Architecture des nœuds SCK (amd64 ?) et registre d’images pour `make switch-image` (construction `linux/amd64`).', 'Doc Switch « Flavors » / portail ; choix du registre (point 11).'],
     ['22', 'Fichiers locaux non versionnés (secrets, état OpenTofu, clés S3, verrou des fournisseurs) : perdus si le dossier est recréé.', 'Extraire les mises à jour par-dessus le dossier ; le verrou de `envs/local` est dans le dépôt (19.10), celui de `envs/switch` reste à ajouter ; sauvegarde du fichier de secrets à décider.'],
     ['23', 'Redémarrages de Mimir au premier démarrage (Kafka non prêt, constaté sur un ingester) ; cause du distributeur non vue.', 'Lire les journaux précédents du distributeur (`kubectl logs --previous`) lors d’un prochain premier démarrage.'],
     ['24', 'L’agent produit parfois une requête PromQL mal parenthésée et peut renoncer (2 cas sur 6 dans les séries du 19.10) ; le test de fumée ne le détecte pas.', 'Série de questions de test et décision du groupe : l’agent est figé en 0.4.3.'],
     ['25', 'Mémoire d’Open WebUI : 936, 989 MiB, 1,10 GiB le 18.10, puis 777, 671 et 997 MiB le 19.10. La croissance continue supposée n’est pas confirmée.', 'Relevés répétés sur plusieurs heures (`container_memory_working_set_bytes` dans Mimir).'],
     ['26', 'Secrets en clair dans les valeurs Helm et dans le fichier d’état OpenTofu.', 'Secrets Kubernetes et état distant chiffré pour tout usage au-delà du test.'],
+    ['27', 'Crédits AWS restants et couverture de Bedrock par ces crédits.', 'Console de facturation AWS (crédits) ; premier appel réel facturé.'],
+    ['28', 'Compte AWS peut-être partagé avec d’autres étudiants (groupe `students`) : quotas et crédits communs, risque de collision de noms.', 'Demander à l’enseignant ; préfixe de groupe et étiquettes dans tous les cas.'],
+    ['29', 'Quotas de service (vCPU EC2, nombre de clusters EKS).', 'Console des quotas (lecture) avant la première session.'],
+    ['30', '**TRAITÉ (25.10.2026)** : architecture de l’image : celle construite sur Mac est arm64, l’instance est x86.', 'Image reconstruite en `linux/amd64` avec `docker buildx` et poussée dans le registre GitLab ; architecture vérifiée dans le registre. Le démarrage de l’image sur l’instance n’est pas testé.'],
+    ['31', '**RÉSOLU (23.10.2026)** : authentification de `kubectl` auprès d’EKS avec le CLI AWS version 1.', '`aws eks update-kubeconfig` puis `kubectl get nodes` fonctionnent (observé sur EKS, 23 et 24.10).'],
+    ['32', 'Accès réseau de l’instance EC2 vers Mimir et Loki (sans authentification, jamais publics).', 'Conçu le 24.10 : NodePort 30090 et 30310 sur les nœuds, ouverts seulement au groupe de sécurité de l’hôte, un seul nœud utilisé. Écrit, jamais testé.'],
+    ['33', '**DÉCIDÉ (25.10.2026)** : registre d’images pour AWS : registre de la forge GitLab.', 'Image poussée, jeton de déploiement en lecture seule créé. L’accès au registre depuis AWS n’est pas vérifié (premier démarrage de l’hôte).'],
+    ['34', 'Open WebUI sur l’instance : configuration (connexion à l’assistant par `/v1`, compte administrateur), exposition, accès des collègues.', 'À concevoir ; accès restreint par adresse IP ou par tunnel.'],
+    ['35', 'Consommation mémoire réelle de la pile sur EKS (dimensionnement actuel : borne déduite de Kind).', 'Première session : `container_memory_working_set_bytes` dans Mimir.'],
+    ['36', 'Calibrage de l’assistant : refus hors sujet essayé une fois ; fiabilité des requêtes PromQL de Mistral Large 3 non testée.', 'Série de questions de test, avec plusieurs formulations hors sujet.'],
+    ['37', 'Propriété intellectuelle et licence MIT : hypothèse du groupe.', 'Confirmation de l’enseignant.'],
   ],
   [500, 4800, 4338]));
 c.push(H2('5.1 Points levés par l’installation sur Kind'));
@@ -620,8 +656,185 @@ c.push(B('Dépôt Helm d’Open WebUI : `https://helm.openwebui.com/` fonctionne
 c.push(B('Step 3 : Open WebUI joint Ollama par `ollamaUrls` ; l’outil de l’assistant est découvert par `openapi.json` et appelé par `POST /tools/ask` (section 4.5). Un outil exposé à Open WebUI suffit ; les six outils de l’agent restent internes.'));
 c.push(B('Step 3 : `qwen3:8b` appelle des outils sans réflexion activée, à condition de lui présenter peu d’outils (outils intégrés décochés) et une fenêtre de contexte suffisante.'));
 
-// 6 sources
-c.push(H1('6. Sources consultées (12 au 16 octobre 2026)'));
+// 6 cible AWS
+c.push(H1('6. Cible AWS : décisions du 22 octobre 2026 et premières exécutions (23 au 25 octobre)'));
+c.push(P('Le 22.10.2026, le professeur a commenté l’avancement du projet : le travail local convient et ne change pas ; trois changements concernent le cloud. Ce chapitre les consigne avec leurs justifications. Il repose sur des vérifications faites avec le CLI AWS par un membre du groupe (qui m’a transmis les sorties), sur des pages de documentation que j’ai lues, et sur des décisions du groupe. Les sections 6.10 à 6.13 (25.10.2026) ajoutent ce qui a été exécuté depuis : deux déploiements de l’infrastructure, le retrait des droits, l’hôte EC2 et le plan de tests. **L’hôte EC2 et la chaîne complète n’ont jamais fonctionné de bout en bout.**'));
+c.push(note('aws', 'une commande a été exécutée par un membre du groupe avec le CLI AWS (version 1.46.1) sur son compte, et la sortie a été constatée. Ces vérifications ne font que lire et ne coûtent rien.'));
+
+c.push(H2('6.1 Ce qui change et pourquoi'));
+c.push(...table(
+  ['Changement demandé', 'Décision', 'Justification', 'Niveau de confiance'],
+  [
+    ['Plus de Switch Cloud : espace AWS avec des crédits', 'AWS, région `us-east-1` ; cluster Amazon EKS ; stockage Amazon S3 à la place de Garage', 'Retour du professeur et décision du groupe. EKS et S3 sont des services managés : moins d’étapes manuelles que la création d’un cluster SCK. Région : celle des codelabs précédents (lue avec `aws configure get region`).', 'Région et droits observés avec le CLI ; EKS et S3 non créés'],
+    ['Plus de LLM hébergé (résultats peu convaincants, ressources coûteuses) ; modèle public, usage gratuit', 'Amazon Bedrock, modèle Mistral Large 3, payé sur les crédits AWS', '« ChatGPT » et « gratuit » sont incompatibles par l’API (6.3). Bedrock est déjà autorisé sur le compte et évite une clé externe à gérer.', 'Appel d’outils observé (1 essai) ; crédits restants non vérifiés'],
+    ['L’assistant ne doit pas tourner dans le cluster surveillé', 'Une instance EC2 (Docker Compose) héberge l’assistant et Open WebUI ; Mimir, Loki, Alloy et Grafana restent dans le cluster', 'Séparer ce qui mesure de ce qui consulte les mesures : un outil de diagnostic ne doit pas dépendre du cluster qu’il surveille. L’instance se crée et se supprime par script. Options comparées en 6.4.', 'Décision du groupe ; rien de déployé'],
+    ['Question de test finale : « Quel temps fait-il aujourd’hui ? »', 'Règle de périmètre dans le prompt système de l’assistant', 'L’assistant doit refuser une question qui ne concerne pas la supervision du cluster.', 'Un essai réussi (section 4.12) ; à répéter sur d’autres formulations'],
+    ['Données sensibles : plus une priorité', 'Aucune contrainte de confidentialité pour la cible AWS ; le local reste entièrement privé', 'Preuve de concept avec un temps limité (rendu le 3 novembre) : ne pas compliquer. Conséquence : les questions et les extraits de métriques et de logs lus par l’agent sont envoyés à Amazon Bedrock.', 'Décision du groupe'],
+  ],
+  [1800, 2300, 3700, 1838]));
+
+c.push(H2('6.2 Vérifications faites avec le CLI AWS (22 octobre 2026)'));
+c.push(...table(
+  ['Commande', 'Résultat observé', 'Ce que cela établit'],
+  [
+    ['`aws sts get-caller-identity --query Arn --output text`', 'un utilisateur IAM (`user/…`), pas un rôle temporaire', 'Ce n’est probablement pas un AWS Academy Learner Lab, dont les comptes passent par un rôle temporaire (connaissance générale, non vérifiée dans la documentation lue).'],
+    ['`aws configure get region`', '`us-east-1`', 'Région du CLI.'],
+    ['`aws eks list-clusters`', 'liste vide', 'L’accès à EKS est autorisé ; aucun cluster n’existe.'],
+    ['`aws iam list-attached-user-policies --user-name …`', 'liste vide', 'Aucune politique attachée directement à l’utilisateur.'],
+    ['`aws iam list-groups-for-user --user-name …`', 'un groupe `students`, créé en septembre 2023', 'Les droits viennent du groupe. Un compte d’école est peut-être partagé avec d’autres étudiants (non vérifié).'],
+    ['`aws iam list-attached-group-policies --group-name students`', '9 politiques, dont `AdministratorAccess`, `AmazonBedrockFullAccess`, `AmazonEC2FullAccess`, `AmazonS3FullAccess`, `AWSCloudFormationFullAccess`', 'Droits suffisants pour EKS, rôles IAM, S3, EC2 et Bedrock. Une règle d’organisation éventuelle ne serait pas visible ici.'],
+    ['`aws bedrock list-foundation-models --by-output-modality TEXT --by-inference-type ON_DEMAND`', 'liste de modèles (Mistral, OpenAI gpt-oss, Amazon Nova, Qwen, DeepSeek, Meta, etc.) ; aucun modèle Claude dans cette liste filtrée', 'Elle montre ce que la région propose, pas ce que le compte a le droit d’invoquer. Cause de l’absence de Claude non vérifiée.'],
+    ['`aws pricing get-products …`', 'prix à l’heure de quatre types d’instances', 'Voir 6.6.'],
+  ],
+  [3000, 3200, 3438]));
+c.push(P('Le modèle `amazon.titan-embed-text-v2:0`, utilisé dans un codelab précédent, est un modèle d’embeddings (texte vers vecteurs) : il ne génère pas de réponses et ne convient pas à l’assistant (connaissance générale, non vérifiée dans la documentation lue ; il est d’ailleurs absent de la liste filtrée sur la sortie texte).'));
+
+c.push(H2('6.3 Le modèle de langage : pourquoi pas ChatGPT, pourquoi Bedrock'));
+c.push(...table(
+  ['Option', 'Ce que dit la source (consultée le 22.10.2026)', 'Verdict'],
+  [
+    ['API OpenAI (ChatGPT)', 'Les nouveaux comptes API utilisent la facturation prépayée : achat minimum de 5 $ (10 $ par défaut) ; la page ne mentionne aucun niveau gratuit ; les crédits achetés expirent après un an.', 'Écartée : incompatible avec « gratuit ».'],
+    ['API Gemini (Google)', 'Un niveau gratuit existe, mais les conditions disent : « You may use only Paid Services when making API Clients available to users in the European Economic Area, Switzerland, or the United Kingdom. » Les limites exactes du niveau gratuit sont renvoyées vers Google AI Studio et ne sont pas garanties.', 'Écartée : le groupe est en Suisse.'],
+    ['Groq (`gpt-oss-20b`)', 'Tableau de limites : 30 requêtes par minute, 1 000 par jour, 8 000 tokens par minute, 200 000 tokens par jour. La page est ambiguë (en-têtes « Free Plan » et « Developer Plan »). Aucune restriction géographique sur cette page ; les conditions d’utilisation n’ont pas été lues.', 'Possible mais plafonnée ; non retenue.'],
+    ['OpenRouter (modèles `:free`)', '20 requêtes par minute ; 50 requêtes par jour sans crédit acheté, 1 000 avec. La prise en charge des outils dépend du modèle (non vérifiée).', 'Possible mais plafonnée ; non retenue.'],
+    ['Amazon Bedrock (Mistral Large 3)', 'Autorisé sur le compte (`AmazonBedrockFullAccess`). Prix à la demande dans les régions US East : 0,50 $ en entrée et 1,50 $ en sortie par million de tokens (page de prix AWS). Appel d’outils observé sur le compte : 1 essai, `stopReason: tool_use`, 439 ms, 91 tokens en entrée et 35 en sortie.', 'Retenue. Crédits restants et couverture de Bedrock par ces crédits : non vérifiés.'],
+  ],
+  [1800, 5000, 2838]));
+c.push(note('val', 'les prix de Nova et de gpt-oss pour `us-east-1` n’ont pas pu être lus (la page de prix les donne pour Sydney seulement, et ne donne aucun prix Nova dans la partie lue), et la documentation des modèles qui acceptent l’appel d’outils n’a pas pu être lue. Mistral Large 3 a été choisi parce que son prix est vérifié et que son appel d’outils a été testé, pas parce qu’il serait le meilleur. Ministral 8B (0,15 $ en entrée comme en sortie) reste une option moins chère à tester.'));
+c.push(P('Ordre de grandeur : une question qui n’a déclenché aucun outil a coûté environ 0,0008 $ (section 4.12). Une question avec outils fait plusieurs appels dont le prompt grossit avec les résultats : **non mesuré**. La consommation de crédits sera à relever dans la console de facturation.'));
+
+c.push(H2('6.4 Où héberger l’assistant et Open WebUI (hors du cluster)'));
+c.push(...table(
+  ['Option', 'Principe', 'Avantages', 'Risques'],
+  [
+    ['**A. Instance EC2 (retenue)**', 'Docker Compose avec l’assistant et Open WebUI, dans le même réseau (VPC) que le cluster', 'Simple ; facturation horaire ; supprimée par `tofu destroy`', 'Accès réseau vers Mimir et Loki à restreindre ; image à construire pour l’architecture de l’instance'],
+    ['B. ECS Fargate', 'Deux conteneurs gérés, derrière un load balancer', 'Aucun serveur à gérer', 'Plus de configuration (rôles IAM, load balancer facturé à l’heure)'],
+    ['C. Lambda', 'L’assistant seul, en conteneur', 'Coût proche de zéro à l’arrêt', 'Open WebUI à héberger ailleurs ; durée des appels avec outils parfois supérieure à 30 s selon la passerelle (non vérifié)'],
+    ['D. Mac du groupe', 'Docker Compose local et `kubectl port-forward` vers le cloud', 'Gratuit ; aucune exposition réseau', 'Pas hébergé dans le cloud ; la démonstration dépend d’une machine'],
+  ],
+  [1700, 2700, 2500, 2738]));
+c.push(P('L’option A a été retenue par le groupe le 22.10.2026 (recommandation de ma part, décision du groupe). L’option D reste utilisable pour développer sans payer. Mimir et Loki n’ont pas d’authentification : ils ne doivent jamais être exposés publiquement, seule l’instance doit pouvoir les atteindre (accès réseau à concevoir, non fait).'));
+c.push(P('**Grafana reste dans le cluster** (décision du groupe, 22.10.2026) : le professeur a parlé de l’assistant, et déplacer Grafana demanderait de réécrire sa configuration pour Docker Compose. Limite à signaler : Grafana, qui consulte les mesures, partage encore le cluster surveillé. **Open WebUI** est avec l’assistant sur l’instance : il parle à l’assistant par l’interface `/v1` (section 4.12), pas à Bedrock.'));
+
+c.push(H2('6.5 Architecture cible et dimensionnement'));
+c.push(...code(
+`Compte AWS, région us-east-1
+  ├─ Cluster EKS (surveillé)       Alloy ──▶ Mimir, Loki ──▶ Amazon S3 ; Grafana
+  │                                2 nœuds m5.xlarge (4 vCPU, 16 Gio chacun)
+  ├─ Instance EC2 (hors cluster)   Open WebUI ──▶ assistant (/v1) ──▶ Mimir, Loki
+  │                                accès réseau restreint, jamais public
+  └─ Amazon Bedrock                Mistral Large 3, appelé par l’assistant
+                                   (rôle de l’instance, limité à ce modèle ; non testé)`));
+c.push(note('notest', 'le dossier `envs/aws` et les commandes `make aws-*` existent ; l’infrastructure (réseau, EKS, S3, droits) a été créée deux fois, mais, au 25.10, l’hôte EC2 n’avait jamais été lancé et la pile complète n’avait jamais tourné de bout en bout (6.10 à 6.12). Dépassé : le déploiement complet a tourné le 27.10.'));
+c.push(P('**Dimensionnement.** Sur Kind, tout tournait dans 15 Gio de mémoire Docker, dont environ 6,7 Go pour Ollama (mesuré en octobre) et environ 1 Gio pour Open WebUI. La pile sans eux (Mimir, Loki, Garage, Grafana, Alloy) tient donc dans 7 à 8 Gio au plus : **c’est une borne haute déduite, pas une mesure**. Sur EKS s’ajoutent les composants système et le pilote de volumes EBS. Le groupe a accepté 2 nœuds `m5.xlarge` pour la première session ; le nombre et le type sont des variables, à réduire après mesure (métriques de Mimir). `m5` plutôt que `t3` : l’écart est d’environ 0,05 $/h pour les deux nœuds, et les `t3` sont à performance variable, ce qui peut, à ma connaissance (non vérifié ici), entraîner un supplément en cas de forte sollicitation du processeur.'));
+
+c.push(H2('6.6 Coûts'));
+c.push(...table(
+  ['Poste', 'Prix', 'Source'],
+  [
+    ['`m5.xlarge` (4 vCPU, 16 Gio)', '0,192 $/h par nœud, soit 0,384 $/h pour 2 nœuds', 'API de prix AWS, Linux, `us-east-1`, 22.10.2026'],
+    ['`t3.xlarge`, `m5.large`, `t3.large`', '0,1664 $, 0,096 $ et 0,0832 $ par heure', 'idem'],
+    ['Plan de contrôle EKS (support standard)', '0,10 $/h par cluster', 'Page de prix Amazon EKS (région non précisée sur la page)'],
+    ['Mistral Large 3 (Bedrock)', '0,50 $ en entrée, 1,50 $ en sortie, par million de tokens', 'Page de prix Amazon Bedrock (US East N. Virginie, US East Ohio, US West Oregon)'],
+  ],
+  [3200, 3200, 3238]));
+c.push(P('Nœuds et plan de contrôle : 0,384 + 0,10 = **0,484 $/h**, soit environ 1,45 $ pour une session de 3 h et environ 11,60 $ si le cluster est oublié pendant 24 h. **Non chiffrés** : volumes, load balancers, passerelle NAT éventuelle, instance EC2, trafic. Mesuré le 23.10 : une session d’environ 56 minutes, soit environ 0,45 $ (calcul d’après les prix, pas une facture). Règles retenues : sessions courtes et planifiées, script de destruction et script d’audit (liste des ressources restantes) après chaque session, étiquette de projet sur toutes les ressources. Les load balancers créés par Kubernetes ne sont pas dans l’état d’OpenTofu : il faut supprimer les services avant le cluster, sinon ils continuent d’être facturés (point connu, à vérifier au premier essai).'));
+
+c.push(H2('6.7 Calendrier jusqu’au rendu du 3 novembre (mis à jour le 28 octobre)'));
+c.push(...table(
+  ['Période', 'Travail', 'État'],
+  [
+    ['22–23 octobre', 'Décisions, branche, vérifications AWS, assistant 0.5.0, première exécution AWS (création puis destruction)', 'fait'],
+    ['24 octobre', 'Deuxième exécution : correctifs du pilote de disques et de la classe de stockage ; droits retirés à 15h17', 'fait, interrompu'],
+    ['25 octobre', 'Hôte EC2, registre d’images, plan de tests, mise à jour des documents ; écriture au professeur', 'fait (hors réponse)'],
+    ['26–27 octobre', 'Droits revenus le 26.10 ; destruction du cluster de test (60 ressources) ; redéploiement complet avec l’hôte le 27.10 (19 min 12 s)', 'fait'],
+    ['27–28 octobre', 'Exécution du plan de tests (cas d’usage, refus, puis pannes)', 'fait : 15 scénarios'],
+    ['29 octobre', 'Documents à jour, rapport de tests rempli', 'prévu'],
+    ['30 octobre', 'Répétition de la démonstration, destruction finale et audit', 'prévu'],
+    ['31 octobre – 2 novembre', 'Marge, relecture, plan d’amélioration', 'prévu'],
+    ['3 novembre, 8h45', 'Rendu', '—'],
+  ],
+  [2600, 5138, 1900]));
+c.push(note('val', 'si les droits AWS ne reviennent pas le 26.10 au soir, décision de passer au plan de repli : documenter AWS avec les preuves des deux exécutions et démontrer les cas d’usage sur Kind reconstruit. Les durées de la ligne du 26.10 ne sont pas mesurées. On ne sait pas encore s’il y a une présentation orale en plus du dépôt. Les droits sont revenus le 26.10 : le plan de repli n’a pas été utilisé.'));
+
+c.push(H2('6.8 Git, licence et propriété intellectuelle'));
+c.push(B('**Une branche par membre** (`dev/<prénom>`), créée depuis `main` ; seul son propriétaire y pousse, les autres la récupèrent pour tester. `main` est protégée : « Allowed to push and merge : No one », « Allowed to merge : Maintainers ». Un push direct sur `main` a été refusé lors d’un test (« pre-receive hook declined », 22.10.2026). Les deux collègues ont le rôle Maintainer : ils peuvent fusionner leurs propres merge requests et modifier la protection ; aucune règle d’approbation n’est configurée.'));
+c.push(B('**Licence MIT** (fichier `LICENSE`), copyright attribué à la HES-SO, sur décision d’un membre du groupe : le projet est un travail d’école, supposé appartenir à l’école. Vérification faite : le règlement du travail de Master du MAS EDD-BAT de la HES-SO (formation continue) attribue la propriété intellectuelle à la HES-SO, mais il ne concerne pas ce cours et je n’ai pas trouvé de règle générale applicable. L’attribution reste une **hypothèse**, à faire confirmer par l’enseignant ; l’accord des autres membres n’a pas été vérifié.'));
+
+c.push(H2('6.9 Ce qui reste à vérifier'));
+c.push(P('Les points 27 à 36 de la section 5, dont plusieurs ont avancé depuis le 22.10 : l’authentification de `kubectl` avec le CLI version 1 (observée, 6.10), l’architecture de l’image (image `linux/amd64` poussée dans le registre GitLab, 6.12) et le registre d’images (GitLab, 6.12) sont traités. Restent ouverts : crédits et couverture de Bedrock, compte partagé (la panne de droits touche aussi le groupe 12, 6.11), quotas, accès réseau de l’instance vers Mimir et Loki, configuration d’Open WebUI sur l’instance, mémoire réelle de la pile, calibrage de l’assistant, propriété intellectuelle.'));
+
+c.push(H2('6.10 Exécutions AWS des 23 et 24 octobre 2026'));
+c.push(P('Le déploiement se fait en deux étapes, parce que le fournisseur Helm a besoin d’un cluster qui existe déjà : `envs/aws/infra` (réseau, EKS, S3, droits, hôte EC2), puis `envs/aws/stack` (Mimir, Loki, Alloy, Grafana). Les scripts `aws-up.sh`, `aws-down.sh`, `aws-audit.sh` et `aws-allow-ip.sh` (cibles `make aws-*`) enchaînent ces étapes ; toutes nos ressources portent le préfixe `g13-p5` et des étiquettes (`Project`, `Group`, `Owner`), et nous ne touchons à rien qui ne les porte pas.'));
+c.push(...table(
+  ['Mesure', 'Valeur observée', 'Remarque'],
+  [
+    ['Création du cluster EKS', '9 min 55 s à 10 min 46 s', 'deux exécutions'],
+    ['Groupe de nœuds (2 × m5.xlarge)', '1 min 19 s à 2 min', 'deux exécutions'],
+    ['Modules complémentaires EKS', '16 à 47 s', 'le pilote de disques : 47 s à la deuxième exécution'],
+    ['Destruction : groupe de nœuds', '8 min 10 s', 'première exécution'],
+    ['Destruction : passerelle Internet', '6 min 51 s', 'première exécution'],
+    ['Destruction : cluster', '3 min 8 s', 'première exécution'],
+    ['Première session complète', 'environ 56 minutes, environ 0,45 $', 'calcul d’après les prix, pas une facture ; audit final : « rien trouvé »'],
+  ],
+  [3200, 3200, 3238]));
+c.push(note('eks', 'durées lues dans les sorties des scripts, exécutés par un membre du groupe le 23.10 au soir et le 24.10 ; `kubectl` s’authentifie auprès d’EKS avec le CLI AWS version 1 (`aws eks update-kubeconfig`).'));
+c.push(H3('Échecs rencontrés et corrections'));
+c.push(...table(
+  ['Constat', 'Cause', 'Correction', 'Niveau de preuve'],
+  [
+    ['Le pilote de disques EBS (CSI) redémarre en boucle : « no EC2 IMDS role found »', 'Les nœuds EKS limitent à 1 le nombre de sauts des métadonnées : un pod n’atteint pas les droits du nœud', 'Limite de sauts portée à 2 dans le groupe de nœuds', 'Observé : contrôleurs 6/6 et module créé en 47 s à la deuxième exécution'],
+    ['Les volumes de Mimir et Loki restent « Pending » ; Helm dépasse son délai de 900 s', 'EKS n’a pas de classe de stockage utilisable par défaut', 'Classe `gp3` par défaut (`envs/aws/stack/storageclass.yaml`, appliquée par `aws-up.sh`)', 'Observé : volumes liés après coup, pods Mimir et Loki en `Running`'],
+    ['L’audit concluait toujours « rien trouvé »', 'Une variable modifiée dans un sous-processus d’un tube était perdue', 'Drapeau dans un fichier', 'Confirmé : « RESSOURCES RESTANTES » s’affiche quand il en reste'],
+    ['La console semblait figée pendant le déploiement', '`sed` retient la sortie dans un tube sur macOS', '`sed -l`', 'Observé'],
+    ['L’audit listait 4 règles de groupe de sécurité', 'Entrées périmées de l’API d’étiquettes', 'Aucune : elles ont disparu le lendemain', 'Vérifié : 0 règle réelle avec `describe-security-group-rules`'],
+  ],
+  [2400, 2400, 2400, 2438]));
+c.push(P('Redémarrages relevés le 24.10 sur EKS : trois pour les composants « ingester », jusqu’à 19 plus tôt pour « distributor » et « ruler », stables ensuite. La cause de ces redémarrages n’a pas été étudiée : elle coïncide avec la période où les volumes n’existaient pas encore, mais cela n’est pas démontré.'));
+c.push(H3('État au moment où les droits ont été retirés (24.10, 15h17)'));
+c.push(B('Les deux nœuds sont `Ready` ; Mimir et Loki sont en `Running`.'));
+c.push(B('**Au 25.10** (dépassé : Alloy et Grafana sont installés depuis le 27.10), Alloy et Grafana **n’étaient pas installés** : l’étape 2 n’est jamais allée au bout, et les composants Helm de Mimir et Loki sont marqués échoués dans l’état d’OpenTofu (délai dépassé avant la classe de stockage).'));
+c.push(B('10 volumes EBS (créés pour les volumes persistants), un utilisateur IAM `g13-p5-s3-access` avec une clé d’accès active, six buckets S3 `g13-p5-<hex>-*`.'));
+c.push(note('notest', 'au 25.10, l’écriture de Mimir et Loki dans S3 n’avait pas été constatée, et l’accessibilité des NodePort 30090 et 30310 depuis l’hôte n’avait pas été testée. Dépassé : écriture dans S3 observée le 28.10 (37 objets pour Mimir, 468 pour Loki), et l’assistant joint Mimir et Loki par ces ports depuis le 27.10. Les durées d’installation de Mimir et Loki avec Helm ne sont toujours pas mesurées séparément.'));
+c.push(note('notest', 'l’image de l’assistant construite sur Mac est `arm64` ; une instance EC2 `t3` est `x86_64` : image reconstruite en `linux/amd64` (6.12).'));
+
+c.push(H2('6.11 Retrait des droits AWS (24 octobre 2026, 15h17)'));
+c.push(P('Le 24.10 à 15h17, l’utilisateur IAM du membre du groupe a perdu l’accès à IAM et à EKS : chaque appel échoue avec « no identity-based policy allows the action », y compris `eks:ListClusters`, `eks:DescribeCluster`, `iam:ListGroupsForUser` et `iam:ListAttachedUserPolicies`. La console AWS affiche les mêmes erreurs. L’identité reste valide, et Amazon Bedrock répond encore (appel du modèle réussi le 25.10). Le message ne mentionne pas de refus explicite (« explicit deny »). **La cause est inconnue** : on ne sait pas si le retrait est volontaire. Sur le premier constat (22.10), le groupe `students` portait la politique `AdministratorAccess`.'));
+c.push(...table(
+  ['Date et heure', 'Fait'],
+  [
+    ['24.10, 15h17', 'Premier `AccessDenied` pendant `aws-up.sh`, alors que le cluster de test tourne depuis environ 13h56 (≈ 0,48 $/h)'],
+    ['24.10, ≈ 15h47', '`kubectl get nodes` : les deux nœuds sont `Ready`, depuis 110 minutes (l’accès au cluster passe par ses propres droits Kubernetes)'],
+    ['24.10, après-midi', 'Message dans le canal Général de Teams, avec mention d’un assistant et des enseignants'],
+    ['24.10, 19h34', 'Message d’étudiants du groupe 12 (projet 1) décrivant le même type de refus sur d’autres services (Lambda, DynamoDB, RDS), dans une autre région'],
+    ['25.10, 00h32 et 13h50', 'Mêmes refus ; aucune réponse constatée du côté des enseignants'],
+    ['25.10, soir', 'Courriel au professeur (prévu), texte court renvoyant au message Teams'],
+  ],
+  [2600, 7038]));
+c.push(P('**Décision de ne pas contourner.** Le cluster reste en place et facturé, mais nous n’avons pas essayé de le réduire (mise à l’échelle du groupe de nœuds, arrêt d’instances, suppression de volumes) : si le retrait est volontaire, le contourner irait contre la règle que quelqu’un a voulu poser. On attend la réponse d’un administrateur. Le coût en attendant est d’environ 11,60 $ par jour. Nous ne touchons à aucune ressource qui ne porte pas notre préfixe.'));
+c.push(note('notest', 'le nombre de nœuds `Ready` après le 24.10 à 15h47 n’a pas été relevé : l’état actuel du cluster n’est pas connu avec certitude.'));
+
+c.push(H2('6.12 L’hôte EC2 : conception du 25 octobre et points non vérifiés'));
+c.push(P('L’hôte (`envs/aws/infra/host.tf` et deux modèles) est une instance `t3.small` dans un sous-réseau public qui lance, avec Docker Compose, l’assistant (configuré pour Bedrock) et Open WebUI. Les décisions et leurs raisons :'));
+c.push(B('**Taille t3.small (2 Gio).** Open WebUI occupait environ 0,7 Gio sur Kind (relevé du 17.10). La mémoire de l’assistant, de Docker et du système n’est pas mesurée sur AWS ; `t3.micro` (1 Gio) est jugé trop juste (estimation).'));
+c.push(B('**Image dans le registre GitLab du projet**, pas dans S3. Une construction sur l’instance aurait évité un secret, mais le groupe a préféré le registre, « fait pour cela ». L’image a été construite en `linux/amd64` avec `docker buildx` (50 s, poussée), et son architecture est vérifiée dans le registre. Un **jeton de déploiement** en lecture seule (`read_registry`) est lu par l’instance, avec une date d’expiration.'));
+c.push(B('**Secrets dans SSM Parameter Store** (jeton du registre, mot de passe d’Open WebUI généré par OpenTofu), lus avec le rôle de l’instance, pas dans `user_data` (visible dans la description de l’instance).'));
+c.push(B('**Rôle de l’instance limité** à l’appel du modèle Bedrock choisi et à la lecture de ces deux paramètres, plus la politique gérée `AmazonSSMManagedInstanceCore` pour l’accès par session SSM (aucun port ouvert, aucune clé SSH).'));
+c.push(B('**Métadonnées : limite de sauts à 2**, pour que les conteneurs atteignent les droits du rôle (même cause que le pilote de disques d’EKS).'));
+c.push(B('**Accès à Mimir et Loki par un seul nœud EKS** (NodePort 30090 et 30310), ouverts seulement au groupe de sécurité de l’hôte. Si ce nœud est remplacé, l’hôte doit être recréé.'));
+c.push(B('**Open WebUI sur le port 3000**, en HTTP, limité à nos adresses IP ; `/v1` de l’assistant n’est pas publié.'));
+c.push(note('code', 'le code est écrit et `tofu validate` réussit (25.10.2026) ; cela vérifie la syntaxe et les références, pas le comportement.'));
+c.push(note('notest', 'au 25.10, jamais lancé : accès au registre HEFR depuis AWS, déchiffrement SSM avec la clé gérée par défaut, autorisation Bedrock sur le modèle (un profil d’inférence pourrait être exigé), étiquette `eks:cluster-name` des nœuds, versions de Compose (`v2.29.7`) et d’Open WebUI (`v0.12.0`), agent SSM présent dans l’image, droits de l’utilisateur pour ouvrir une session SSM. Constaté le 27.10 : l’hôte démarre, lit ses secrets dans SSM, tire les images du registre HEFR et de ghcr.io, et l’assistant appelle Bedrock avec le rôle de l’instance. Toujours non vérifiés : l’ouverture d’une session SSM interactive (nous avons utilisé l’envoi de commandes SSM) et laquelle des deux recherches de nœud a trouvé l’adresse.'));
+c.push(note('eks', 'Bedrock, 25.10 : appel Converse du modèle `mistral.mistral-large-3-675b-instruct` réussi (11 tokens), alors que ce modèle n’apparaît pas dans la liste filtrée par fournisseur Mistral (cause inconnue).'));
+
+c.push(H2('6.13 Plan de tests et démonstration'));
+c.push(P('Le plan (`docs/tests/plan-de-tests.md`) comporte 14 scénarios : fonctionnels (F1 à F4 : santé du cluster, description d’un incident, cause racine, exactitude des chiffres), sécurité et périmètre (S1 à S7 : hors sujet, demande d’action, consigne cachée dans les logs, secrets, demande trop grande, refus non excessif, tentatives de contournement) et résilience (R1 à R3). Chaque scénario a une réussite définie à l’avance et un tableau de résultats, vide tant qu’il n’est pas exécuté. Les scénarios de refus (S1, S2, S4, S6, S7) peuvent s’exécuter sans cluster : l’assistant tourne sur le poste avec le vrai modèle Bedrock (`scripts/run_scenarios.py`) ; les résultats sont alors notés « local, Bedrock » et non « AWS ». Le déroulé de la démonstration est dans `docs/demo/deroule-demonstration.md`.'));
+c.push(note('eks', 'refus exécutés le 25.10.2026 en local avec le vrai modèle Bedrock (S1 : 5 questions hors sujet, S2 : 3 demandes d’action, S4 : 2 demandes de secrets, S6 : salutation, S7 : 4 tentatives de contournement), un essai par formulation, sans cluster. Résultat : 14 réponses sur 15 conformes à notre lecture, une partielle (la question mixte de S7 : la blague n’est ni faite ni refusée explicitement). Jugement à valider par le groupe. Détail brut : `docs/tests/resultats/2026-10-25-local-bedrock.md`.'));
+c.push(note('notest', 'non exécutés : les cas d’usage F1 à F4 (ils demandent un cluster avec des données), la consigne cachée dans les logs (S3), la demande trop grande (S5) et les pannes (R1 à R3). Un essai par formulation ne mesure pas la robustesse : le modèle est appelé à température 0.'));
+
+
+// 7 sources
+c.push(H1('7. Sources consultées (12 au 22 octobre 2026)'));
 const srcs = [
   ['Kind, Quick Start', 'https://kind.sigs.k8s.io/docs/user/quick-start/'],
   ['Loki, installation Helm monolithique', 'https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/'],
@@ -645,6 +858,17 @@ const srcs = [
   ['Article HUG (cité dans le projet)', 'https://medium.com/@houcembenmahfoudh/monitor-kubernetes-clusters-with-ai-practical-use-case-7a8d5b2350b2'],
   ['Grafana, migration du chart k8s-monitoring vers la v4', 'https://grafana.com/docs/grafana-cloud/observe-and-act/monitor-infrastructure/kubernetes-monitoring/configuration/helm-chart-config/helm-chart/migrate-helm-chart.md'],
   ['Grafana, migration des dépôts Helm vers grafana-community', 'https://community.grafana.com/t/helm-repository-migration-grafana-community-charts/160983'],
+  ['OpenAI, facturation prépayée de l’API', 'https://help.openai.com/en/articles/8264644-how-can-i-set-up-prepaid-billing'],
+  ['Gemini API, conditions d’utilisation', 'https://ai.google.dev/gemini-api/terms'],
+  ['Gemini API, limites', 'https://ai.google.dev/gemini-api/docs/rate-limits'],
+  ['Gemini API, compatibilité OpenAI', 'https://ai.google.dev/gemini-api/docs/openai'],
+  ['Groq, limites', 'https://console.groq.com/docs/rate-limits'],
+  ['OpenRouter, limites', 'https://openrouter.ai/docs/api-reference/limits'],
+  ['Prix Amazon EKS', 'https://aws.amazon.com/eks/pricing/'],
+  ['Prix Amazon Bedrock', 'https://aws.amazon.com/bedrock/pricing/'],
+  ['Open WebUI, intégration Amazon Bedrock', 'https://docs.openwebui.com/tutorials/integrations/amazon-bedrock'],
+  ['AWS Academy Learner Lab, services de base (2021 ; consulté, ne s’applique pas au compte du groupe)', 'https://cyberlab.pacific.edu/courses/comp175/resources/aws-academy/AWS_Academy_Learner_Lab-Foundational_Services.pdf'],
+  ['HES-SO, règlement du travail de Master MAS EDD-BAT (propriété intellectuelle, art. 11 ; ne concerne pas ce cours)', 'https://www.hes-so.ch/fileadmin/documents/HES-SO/Documents_HES-SO/pdf/formation-continue/Reglement-travail-Master-MAS-EDD-BAT-5298.pdf'],
 ];
 srcs.forEach(([t, u]) => c.push(B(`${t} : ${u}`)));
 c.push(B('FAQ Ollama (citation sur Docker Desktop et le GPU, section 4.8) : page consultée, URL non conservée.'));

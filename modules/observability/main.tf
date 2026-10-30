@@ -23,7 +23,7 @@ resource "helm_release" "mimir" {
   chart            = "mimir-distributed"
   version          = var.chart_versions.mimir
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/mimir.yaml.tftpl", {
     s3_endpoint   = var.s3_endpoint
@@ -32,6 +32,7 @@ resource "helm_release" "mimir" {
     s3_access_key = var.s3_access_key
     s3_secret_key = var.s3_secret_key
     bucket        = local.bucket
+    node_port     = var.gateway_node_ports.mimir
   })]
 }
 
@@ -43,7 +44,7 @@ resource "helm_release" "loki" {
   chart            = "loki"
   version          = var.chart_versions.loki
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/loki.yaml.tftpl", {
     s3_endpoint    = var.s3_endpoint
@@ -53,6 +54,7 @@ resource "helm_release" "loki" {
     s3_secret_key  = var.s3_secret_key
     bucket         = local.bucket
     caches_enabled = var.loki_caches_enabled
+    node_port      = var.gateway_node_ports.loki
   })]
 }
 
@@ -64,7 +66,7 @@ resource "helm_release" "k8s_monitoring" {
   chart            = "k8s-monitoring"
   version          = var.chart_versions.k8s_monitoring
   timeout          = 900
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/k8s-monitoring.yaml.tftpl", {
     cluster_name  = var.cluster_name
@@ -83,7 +85,7 @@ resource "helm_release" "grafana" {
   chart            = "grafana"
   version          = var.chart_versions.grafana
   timeout          = 600
-  wait             = true
+  wait             = var.helm_wait
 
   values = [templatefile("${path.module}/values/grafana.yaml.tftpl", {
     admin_password = var.grafana_admin_password
@@ -151,6 +153,7 @@ locals {
 }
 
 resource "helm_release" "open_webui" {
+  count            = var.deploy_chat_stack ? 1 : 0
   name             = "open-webui"
   namespace        = "open-webui"
   create_namespace = true
@@ -180,4 +183,16 @@ resource "helm_release" "open_webui" {
   # Open WebUI lit la spécification de l'assistant au démarrage : l'assistant doit déjà répondre.
   # Pas de dépendance à Ollama : le téléchargement du modèle (long) ne doit pas retarder Open WebUI.
   depends_on = [helm_release.assistant]
+
+  lifecycle {
+    precondition {
+      condition     = var.webui_admin_email != "" && var.webui_admin_password != "" && var.webui_secret_key != ""
+      error_message = "deploy_chat_stack = true exige webui_admin_email, webui_admin_password et webui_secret_key."
+    }
+  }
+}
+
+moved {
+  from = helm_release.open_webui
+  to   = helm_release.open_webui[0]
 }

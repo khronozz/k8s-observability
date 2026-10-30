@@ -1,0 +1,40 @@
+services:
+  assistant:
+    image: ${assistant_image}
+    restart: unless-stopped
+    environment:
+      LLM_PROVIDER: bedrock
+      BEDROCK_MODEL_ID: ${bedrock_model_id}
+      BEDROCK_REGION: ${region}
+      MIMIR_URL: ${mimir_url}
+      LOKI_URL: ${loki_url}
+    # Pas de ports publiés : /v1 n'a pas d'authentification, il n'est joignable que par Open WebUI (réseau Compose).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  open-webui:
+    image: ${webui_image}
+    restart: unless-stopped
+    depends_on:
+      assistant:
+        condition: service_started # pas service_healthy : un assistant lent ou en erreur ne doit pas empêcher l'interface de démarrer
+    ports:
+      - "3000:8080"
+    env_file:
+      - .env
+    environment:
+      OPENAI_API_BASE_URL: http://assistant:8000/v1
+      OPENAI_API_KEY: "none"
+      ENABLE_OLLAMA_API: "false"
+      ENABLE_SIGNUP: "false"
+      ENABLE_TITLE_GENERATION: "false"
+      ENABLE_TAGS_GENERATION: "false"
+      ENABLE_FOLLOW_UP_GENERATION: "false"
+    volumes:
+      - webui-data:/app/backend/data
+
+volumes:
+  webui-data:

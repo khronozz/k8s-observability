@@ -41,10 +41,17 @@ variable "grafana_admin_password" {
   sensitive = true
 }
 
+variable "deploy_chat_stack" {
+  description = "true (local, Kind) : Ollama, l'assistant et Open WebUI sont installés DANS le cluster. false (AWS) : seuls Mimir, Loki, Alloy et Grafana sont installés ; l'assistant et Open WebUI tournent hors du cluster (instance EC2)."
+  type        = bool
+  default     = true
+}
+
 variable "webui_secret_key" {
   description = "WEBUI_SECRET_KEY d'Open WebUI (générer avec `openssl rand -hex 32`)."
   type        = string
   sensitive   = true
+  default     = "" # inutile si deploy_chat_stack = false
 }
 
 variable "loki_caches_enabled" {
@@ -139,7 +146,8 @@ variable "assistant_image_pull_secrets" {
 
 # --- Compte administrateur d'Open WebUI (créé au premier démarrage) ----------------------------------
 variable "webui_admin_email" {
-  type = string
+  type    = string
+  default = "" # inutile si deploy_chat_stack = false ; une précondition l'exige sinon (main.tf)
 }
 
 variable "webui_admin_name" {
@@ -150,4 +158,25 @@ variable "webui_admin_name" {
 variable "webui_admin_password" {
   type      = string
   sensitive = true
+  default   = "" # voir webui_admin_email
+}
+
+variable "gateway_node_ports" {
+  description = "Ports NodePort des passerelles Mimir et Loki (plage 30000-32767). Vide (null) : les passerelles restent en ClusterIP (local). Sur AWS, l'instance EC2 qui héberge l'assistant les joint par l'adresse privée d'un nœud ; seul son groupe de sécurité y est autorisé (envs/aws/infra)."
+  type = object({
+    mimir = optional(number)
+    loki  = optional(number)
+  })
+  default = {}
+}
+
+variable "helm_wait" {
+  description = <<-EOT
+    true (défaut, comportement historique) : OpenTofu attend que Mimir, Loki, Alloy et Grafana soient prêts, dans la limite
+    du délai de chaque version. false : OpenTofu rend la main dès l'installation lancée, et c'est le script (scripts/aws-up.sh)
+    qui attend l'état réel des pods. Intérêt : un délai dépassé marque la version « failed » dans l'état OpenTofu alors que les
+    pods finissent par démarrer (constaté le 24.10.2026), et la relance détruit puis recrée ces versions.
+  EOT
+  type        = bool
+  default     = true
 }

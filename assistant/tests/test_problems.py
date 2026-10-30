@@ -33,3 +33,35 @@ def test_find_problems_counts_and_cap(monkeypatch):
 def test_find_problems_rejects_bad_namespace():
     with pytest.raises(ValueError):
         pb.find_problems('x"} or {a="b')
+
+
+def test_find_problems_reports_age_of_first_and_last_occurrence(monkeypatch):
+    """Sert à distinguer un problème EN COURS d'un problème ANCIEN (bruit de démarrage, constaté le 27.10.2026)."""
+    import time
+    now = time.time()
+    t = lambda minutes_ago: str(int((now - minutes_ago * 60) * 1e9))   # noqa: E731
+    monkeypatch.setattr(pb.clients, "logs_range", lambda q, m, l: {"data": {"result": [
+        {"stream": {"pod": "p1"}, "values": [[t(2), GATEWAY_500], [t(12), GATEWAY_500], [t(25), GATEWAY_500]]}]}})
+    c = pb.find_problems("mimir", 30)["categories"]["requete_en_echec"]
+    assert c["lignes"] == 3
+    assert c["derniere_il_y_a_min"] in (1, 2) and c["premiere_il_y_a_min"] in (24, 25)
+
+
+def test_age_min_unreadable_timestamp():
+    import time
+    assert pb._age_min("pas-un-nombre", time.time()) is None
+
+
+def test_find_problems_query_excludes_the_assistants_own_queries(monkeypatch):
+    """Constaté le 27.10.2026 : Loki journalise le texte de nos requêtes, qui contient « status=failed » et « error »."""
+    seen = {}
+    def fake(q, m, l):
+        seen["q"] = q
+        return {"data": {"result": []}}
+    monkeypatch.setattr(pb.clients, "logs_range", fake)
+    pb.find_problems("loki", 30)
+    assert seen["q"].startswith('{namespace="loki"} !~ `(\\(\\?i\\)|%28%3Fi%29)` |~ `')
+    # La ligne réelle relevée sur AWS (début) est bien celle que l'exclusion vise.
+    import re
+    own = 'level=info component=querier query="{namespace=\\"loki\\"} |~ \\"(?i)(status=failed|status_code=[45]'
+    assert re.search(r"(\(\?i\)|%28%3Fi%29)", own)

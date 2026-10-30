@@ -12,6 +12,20 @@ MAX_LOG_LINES = int(os.getenv("MAX_LOG_LINES", "200"))      # plafond dur, quel 
 MAX_RANGE_HOURS = int(os.getenv("MAX_RANGE_HOURS", "24"))   # fenêtre maximale d'une requête
 MAX_SERIES = int(os.getenv("MAX_SERIES", "50"))             # séries renvoyées au plus (le reste est compté)
 
+# ---- Fournisseur du modèle de langage ----
+# « ollama » (défaut, comportement historique : modèle local sur Kind) ou « bedrock » (Amazon Bedrock, AWS).
+# Avec « bedrock », aucune clé n'est lue ici : boto3 cherche lui-même les identifiants (rôle IAM de l'instance EC2,
+# ou profil/variables AWS en développement). Aucun secret dans l'image ni dans les fichiers du dépôt.
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+# Mistral Large 3 : appel d'outils vérifié sur le compte du projet le 22.10.2026 (un seul essai, stopReason=tool_use).
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "mistral.mistral-large-3-675b-instruct")
+BEDROCK_REGION = os.getenv("BEDROCK_REGION", os.getenv("AWS_REGION", "us-east-1"))
+# Plafond de génération par appel (Bedrock seulement) : la consigne demande 120 mots au plus (~200 tokens) ;
+# 600 laisse de la marge pour les arguments d'outils. Valeur choisie, non mesurée.
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "600"))
+# Nom du « modèle » que l'interface compatible OpenAI (/v1) présente à Open WebUI.
+PUBLIC_MODEL_NAME = os.getenv("PUBLIC_MODEL_NAME", "assistant-kubernetes")
+
 # ---- Agent (Ollama) ----
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama.ollama.svc.cluster.local:11434")
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen3:8b")

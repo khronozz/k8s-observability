@@ -1,157 +1,96 @@
-# Surveiller un cluster Kubernetes avec une IA : pile d'observabilité et assistant en lecture seule
+# Surveiller un cluster Kubernetes avec une IA
 
 Projet 5 du cours *Cloud Services and Systems* (HES-SO Master, groupe 13) : « Monitoring Kubernetes clusters with AI ».
 
-Ce dépôt contient tout ce qu'il faut pour monter, **d'abord en local sur Kind, puis sur Switch Cloud**, une pile qui collecte les
-métriques et les logs d'un cluster Kubernetes et permet de les interroger en langage naturel, **sans qu'aucune donnée ne quitte le cluster**.
+## En bref
 
-> **État honnête (19.10.2026)** : le déploiement **local (Kind)** a été exécuté de bout en bout, une fois sans intervention
-> (`make local-all`, test de fumée 6 contrôles sur 6), après trois tentatives échouées puis corrigées. Le déploiement **Switch Cloud n'a
-> jamais été exécuté** : tout ce qui le concerne est écrit d'après la documentation de Switch et reste à tester.
-> Détail de ce qui est vérifié ou non : [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx), sections 0, 3.7 et 5.
+Un ingénieur pose une question en français (« Quels pods consomment le plus de mémoire ? », « Que se passe-t-il avec ce pod ? »).
+Un assistant IA va chercher lui-même les métriques et les logs du cluster Kubernetes, puis répond en indiquant les requêtes
+qu'il a utilisées, pour que la réponse puisse être vérifiée.
 
-## Pourquoi ce projet
+- L'assistant est en **lecture seule** : il ne peut rien modifier dans le cluster.
+- Les métriques et les logs sont collectés par Alloy, stockés dans Mimir et Loki (outils de Grafana) et consultables dans Grafana.
+- **Cible : AWS.** Le cluster surveillé (EKS) est séparé de la machine qui héberge l'assistant et son interface de chat
+  (Open WebUI). Le modèle de langage est Amazon Bedrock (Mistral Large 3).
+- **Version de test : en local** (Kind), tout dans un seul cluster, avec un modèle Ollama. Aucune donnée ne quitte la machine.
 
-Le sujet demande un assistant IA qui aide à superviser un cluster Kubernetes. Le groupe a retenu trois contraintes :
-- **confidentialité maximale** (données médicales envisagées) : le modèle de langage tourne **dans le cluster** (Ollama) ; aucune API externe ;
-- **assistant en lecture seule** : il ne fait que des requêtes `GET` vers Mimir et Loki, sans `kubectl` ni droit d'écriture ;
-- **peu d'innovation** : on reprend les technologies de l'article du HUG cité dans le sujet (Ollama, LangChain/LangGraph, Open WebUI).
+## Où en est chaque livrable (au 30 octobre 2026)
 
-L'autre exigence est la **reproductibilité** : tout est décrit en code (OpenTofu + Helm, scripts, Makefile) pour qu'un déploiement sur un
-cloud public demande le moins possible de gestes manuels.
-
-## Ce que contient la pile
-
-```
-Cluster Kubernetes
-  ├─ k8s-monitoring (Alloy)  ── métriques ──▶ Mimir ──▶ stockage S3 (Garage en local, SCS3 chez Switch)
-  │                          └─ logs / événements ──▶ Loki ──▶ stockage S3
-  ├─ Grafana         (sources de données : Mimir et Loki)
-  ├─ Ollama          (modèle qwen3:8b, sur CPU), utilisé par Open WebUI et par l'assistant
-  ├─ assistant       (FastAPI + agent LangChain/LangGraph, 6 outils en lecture seule) ──▶ Mimir, Loki, Ollama
-  └─ Open WebUI      (interface de chat ; un seul outil exposé : l'assistant)
-```
-
-| Composant | Rôle | Namespace |
+| Livrable du sujet | Où le trouver | État |
 |---|---|---|
-| Garage (local seulement) | stockage S3 sans MinIO pour Mimir et Loki | `garage` |
-| Mimir, Loki | stockage des métriques et des logs | `mimir`, `loki` |
-| k8s-monitoring (Alloy) | collecte | `monitoring` |
-| Grafana | visualisation | `grafana` |
-| Ollama | serveur du LLM | `ollama` |
-| assistant | API et agent (code dans `assistant/`) | `assistant` |
-| Open WebUI | interface de chat | `open-webui` |
+| 1. Exigences et architecture | [`docs/architecture/`](docs/architecture/) (version 4 à jour, avec les exigences ; versions 1 à 3 conservées) ; [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) | Fait |
+| 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : déployé le 27 octobre** (EKS, Mimir, Loki, Alloy, Grafana, S3) ; Mimir et Loki écrivent bien dans S3 (relevé du 28.10 : 37 objets côté Mimir, 468 côté Loki) |
+| 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.12 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
+| 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Fait, avec réserves** : 15 scénarios (cas d'usage F1 à F5, refus S1 à S7, pannes R1 à R3) exécutés sur AWS les 27 et 28 octobre, résultats et défauts dans le plan. R3 a été remplacé par une variante (mauvais identifiant de modèle). Peu d'essais par scénario |
+| 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) (déroulé écrit, 9 captures du 28.10) ; [`docs/demo/script-video.md`](docs/demo/script-video.md) (script de la vidéo demandée par le professeur) | Captures **faites**. Vidéo **faite** (enregistrée le 29.10, 9 min 09 s, en français ; lien dans le rapport de 2 pages `docs/rapport/Report-Group13-en.docx`) |
 
-Les choix techniques et leurs justifications sont dans le [guide](docs/Projet5-Stack-Observabilite-Kubernetes.docx) (tableau des décisions et sections 3 et 4).
+**AWS.** Les 23 et 24 octobre, l'infrastructure a été créée et détruite par script, puis les droits AWS de l'étudiant ont été
+retirés le 24 octobre à 15h17. Selon l'assistant du cours (message du 26 octobre), il s'agit d'une suppression accidentelle de
+permissions qui a touché plusieurs groupes, et nos scripts n'en sont pas la cause. Depuis le 27 octobre, le déploiement complet
+tourne (cluster EKS surveillé, hôte de l'assistant séparé). Détail : [déploiement AWS](docs/deploiement-aws.md).
 
-## Prérequis
+## Architecture cible
 
-Testé sur un Mac Apple silicon, Docker Desktop avec **10 CPU et 15 Gio de mémoire** (le script `make preflight` avertit en dessous de 14 Gio).
-Versions utilisées lors des essais : OpenTofu 1.13.1, Helm 4.3.1, kubectl 1.37.1, kind 0.33.0, Docker 29.8.2 ; en plus `git`, `openssl`, `python3`.
-
-```bash
-make preflight        # vérifie les outils, la mémoire Docker et les clusters Kind existants ; ne modifie rien
+```
+Compte AWS, région us-east-1
+  ├─ Cluster EKS (surveillé)       Alloy ──▶ Mimir, Loki ──▶ Amazon S3 ; Grafana
+  ├─ Instance EC2 (hors cluster)   Open WebUI ──▶ assistant ──▶ Mimir, Loki
+  └─ Amazon Bedrock                Mistral Large 3, appelé par l'assistant
 ```
 
-Ce qui est téléchargé : charts Helm et images (plusieurs Go ; celle d'Open WebUI fait 1,46 Go), le modèle `qwen3:8b` (**téléchargé par le chart Ollama** ; taille de téléchargement non relevée, 6,7 Go en mémoire).
-Les durées dépendent donc beaucoup du réseau.
+Le professeur a demandé que l'assistant ne tourne pas dans le cluster qu'il surveille (retour du 22.10.2026). Mimir et Loki
+n'ont pas d'authentification : ils ne sont jamais exposés sur Internet. Le schéma complet est dans le
+[document d'architecture](docs/architecture/Group-13-Architecture-v4.docx).
 
-## Démarrage en local (Kind)
+## Démarrage rapide
 
-### A. Étape par étape (pour comprendre ou reprendre après un échec)
+**En local** (Mac, Docker Desktop, 15 Gio de mémoire pour Docker) :
 
-Lancez les commandes **dans l'ordre**, depuis la racine du dépôt.
+```bash
+make preflight     # vérifie les outils, ne modifie rien
+make local-all     # crée tout, de zéro (au moins 15 à 21 minutes, à cause du téléchargement du modèle)
+make pf-webui      # interface de chat sur http://localhost:8080 (identifiants : make local-credentials)
+make local-down    # supprime tout
+```
 
-| # | Commande | Ce qu'elle fait |
+**Sur AWS** : demande un compte AWS avec les droits nécessaires, une image de l'assistant dans un registre et un jeton de lecture
+de ce registre. Le cluster coûte environ **0,48 $ par heure** tant qu'il existe : `make aws-down` le détruit, puis contrôle
+qu'il ne reste rien. Le mode d'emploi est dans le [déploiement AWS](docs/deploiement-aws.md).
+
+Dans Open WebUI, ouvrez une nouvelle conversation pour chaque question. Sur **AWS** (version 0.5.11 et suivantes), les outils
+appelés et leurs arguments sont listés sous la réponse (« Outils appelés ») ; pour `promql_instant` et `promql_range`, l'argument est la requête PromQL, qu'on peut rejouer dans Grafana. En **local**, il faut déplier le résultat de l'outil.
+
+## Documentation
+
+- [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide complet (installation, décisions et justifications, mesures, échecs et corrections, points ouverts). Se régénère avec `make docs`.
+- [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (`Group-13-Architecture.pdf` et `.docx`, **conservés tels quels**) et ses mises à jour : [`Group-13-Architecture-v2.docx`](docs/architecture/Group-13-Architecture-v2.docx) (25.10, déploiement AWS partiel) , [`Group-13-Architecture-v3.docx`](docs/architecture/Group-13-Architecture-v3.docx) (28.10, schéma AWS) et [`Group-13-Architecture-v4.docx`](docs/architecture/Group-13-Architecture-v4.docx) (28.10, ajoute les exigences ; version à jour).
+- [`docs/deploiement-local.md`](docs/deploiement-local.md), [`docs/deploiement-aws.md`](docs/deploiement-aws.md) : mode d'emploi détaillé.
+- [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [`docs/plan-amelioration.md`](docs/plan-amelioration.md) (limites et corrections classées par priorité) et [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md).
+- [`CHANGELOG.md`](CHANGELOG.md) : journal daté des changements. [`CONTRIBUTING.md`](CONTRIBUTING.md) : travail à plusieurs (branches, secrets).
+
+## Branches du dépôt
+
+Le groupe a travaillé sur plusieurs branches. La branche principale (`main`) reçoit le travail de `dev/nicolas`, qui contient la pile d'observabilité, l'assistant, le déploiement AWS, les tests, les documents et le rapport. Les autres branches n'ont **pas** été fusionnées : le choix a été fait pour éviter de résoudre des conflits à la fin du projet, et il peut être revu si le groupe le souhaite. Pour voir la contribution des autres membres, il faut consulter ces branches :
+
+| Branche | Auteur | Contenu |
 |---|---|---|
-| 1 | `make preflight` | vérifie outils, mémoire Docker, clusters existants |
-| 2 | `make local-secrets` | génère des mots de passe aléatoires dans `envs/local/secrets.auto.tfvars.json` (jamais écrasés, ignorés par git) |
-| 3 | `make local-up` | crée le cluster Kind (1 plan de contrôle, 2 nœuds) |
-| 4 | `make local-garage` | clone le chart Garage (commit figé) et le déploie (phase 1 d'OpenTofu) |
-| 5 | `make local-garage-init` | initialise Garage : layout, 6 buckets, clé S3 → `envs/local/s3.auto.tfvars.json` |
-| 6 | `make local-assistant-image` | construit l'image de l'assistant (sans cache) et la charge dans Kind |
-| 7 | `make local-stack` | déploie Mimir, Loki, k8s-monitoring, Grafana, Ollama (télécharge le modèle), assistant, Open WebUI (phase 2) |
-| 8 | `make local-webui-config` | crée l'entrée de modèle d'Open WebUI (prompt système, contexte, `think: false`) ; attend qu'Open WebUI réponde |
-| 9 | `make local-test` | test de fumée : 6 contrôles (pods, modèle, assistant, Mimir, Open WebUI, question de bout en bout) |
-| 10 | `make local-credentials` | affiche les identifiants Open WebUI et Grafana **dans votre terminal** (ne les collez pas dans un message) |
-
-Durées mesurées le 19.10.2026 pour la création des ressources de l'étape 7 (en parallèle, donc non additives) : Loki 5 à 8 min,
-Mimir 7 à 8 min, Grafana 5 à 6 min, k8s-monitoring 9 à 13 min, Open WebUI 9 à 10 min, **Ollama 15 à 21 min** (téléchargement du modèle).
-
-### B. Commande unique
-
-```bash
-make local-down && make local-all     # ou simplement : make local-all   (sur une machine sans cluster)
-```
-
-`make local-all` enchaîne les 10 étapes ci-dessus. La durée totale n'a pas été chronométrée ; comptez au moins la durée de la
-ressource la plus lente (Ollama, 15 à 21 min) plus la préparation.
-**Fiabilité** : elle a réussi une fois sur quatre exécutions ; les trois échecs précédents venaient d'attentes trop courtes et sont corrigés
-(section 3.7 du guide). Si une étape échoue, relancez les étapes restantes une par une (tableau A).
-
-### Utiliser la pile
-
-```bash
-make pf-webui         # http://localhost:8080  (e-mail : admin@local.invalid ; mot de passe : make local-credentials)
-make pf-grafana       # http://localhost:3000  (utilisateur : admin)
-```
-
-Dans Open WebUI, ouvrez **une nouvelle conversation** pour chaque question et posez par exemple « Quels sont les 3 pods qui consomment le plus de mémoire ? ».
-Dépliez « Voir le résultat de ask_cluster_assistant » pour voir les requêtes réellement exécutées : c'est la façon de vérifier la réponse.
-
-### Tout supprimer
-
-```bash
-make local-down       # supprime le cluster, l'état OpenTofu local et les clés S3 ; conserve les mots de passe générés
-```
-
-## Déploiement sur Switch Cloud (NON TESTÉ)
-
-Étapes **manuelles** à faire d'abord (aucun accès à la plateforme à ce jour ; détail et sources : guide, section 3.5) :
-1. créer le cluster SCK (portail Switch, ou `scripts/sck-create-cluster.sh` avec le JSON de la doc Switch) et télécharger son kubeconfig ;
-2. créer les buckets SCS3 : `scripts/scs3-create-buckets.sh` (endpoint, région et clés à relever dans la doc ou le portail) ;
-3. copier `envs/switch/terraform.tfvars.example` en `envs/switch/terraform.tfvars` et le compléter (fichier ignoré par git) ;
-4. choisir un registre d'images ; l'image doit être construite pour **linux/amd64** (hypothèse sur les nœuds SCK, non vérifiée).
-
-Puis, une fois ces prérequis réunis :
-
-```bash
-make switch-image REGISTRY=<registre>/<projet>   # construit l'image de l'assistant (linux/amd64) et la publie
-export KUBECONFIG=~/.kube/sck-switch.yaml        # le kubeconfig SCK
-make switch-apply                                # génère les secrets, déploie tout (OpenTofu), configure Open WebUI
-```
-
-Points ouverts connus (guide, section 5) : registre d'images, architecture des nœuds, accès sortant d'Open WebUI vers
-`huggingface.co` (modèle d'embedding), GPU et quotas, endpoint et région SCS3, question « Mimir sans MinIO » au professeur.
+| `dev/malik` | Malik Fleury | Mode hybride en local : LLM sur Amazon Bedrock (`LLM_PROVIDER=bedrock`), script de secret `scripts/local-bedrock-secret.sh`, test de fumée adapté (2 commits du 25.10). Cette branche contient aussi une copie plus ancienne de `dev/nicolas`. |
+| `partie2-switchengines` | Khalil El Ajeri | Déploiement sur SWITCHengines : 2 machines virtuelles et k3s en OpenTofu (`envs/switch/infra/`), création du stockage S3 et des machines (`scripts/switch-s3-init.py`, `scripts/switch-vms.py`), adaptation du test de fumée. |
+| `dev/malik-report` | Malik Fleury | Brouillon de rapport (`docs/final/`), non retenu : le rapport à rendre est `docs/rapport/Report-Group13-en.docx`. |
 
 ## Contenu du dépôt
 
 ```
 Makefile                  toutes les commandes (make help)
-assistant/                code de l'assistant (FastAPI + LangChain/LangGraph), Dockerfile, 51 tests (pytest)
+assistant/                code de l'assistant (FastAPI + LangChain/LangGraph ; LLM Ollama ou Bedrock), Dockerfile, tests
 charts/assistant/         chart Helm de l'assistant
-modules/observability/    module OpenTofu partagé (Mimir, Loki, k8s-monitoring, Grafana, Ollama, assistant, Open WebUI)
+modules/observability/    module OpenTofu partagé (Mimir, Loki, Alloy, Grafana, Ollama, assistant, Open WebUI)
 envs/local/               assemblage Kind (Garage + module)
-envs/switch/              assemblage Switch Cloud (module seul)
-kind/                     configuration du cluster local
-scripts/                  preflight, secrets, Garage, configuration d'Open WebUI, test de fumée, identifiants, scripts SCK/SCS3
-manual/local/             valeurs Helm de l'installation manuelle testée (référence)
-docs/                     guide (DOCX), sources du guide (guide-src/), document d'architecture rendu (architecture/)
-.gitlab/issue_templates/  modèle de ticket « Test / découverte »
+envs/aws/                 assemblage AWS : infra/ (réseau, EKS, S3, droits, hôte EC2) puis stack/ (Mimir, Loki, Alloy, Grafana)
+envs/switch/              Switch Cloud : ABANDONNÉ, jamais exécuté, conservé en référence
+scripts/                  local : preflight, secrets, Garage, Open WebUI, test de fumée ; AWS : aws-up, aws-down, aws-audit, aws-redo-host (remplace l'hôte), aws-run-scenarios (tests de refus sur l'hôte) ; tests de refus
+docs/                     guide, architecture, déploiements, tests, démonstration
 ```
-
-## Documentation
-
-- [`docs/Projet5-Stack-Observabilite-Kubernetes.docx`](docs/Projet5-Stack-Observabilite-Kubernetes.docx) : le guide (installation manuelle, automatisation, décisions et justifications, mesures, échecs et corrections, points ouverts). Régénérer : `make docs`.
-- [`docs/architecture/`](docs/architecture/) : le document d'architecture soumis (PDF et DOCX), **conservé tel quel, ne pas le modifier**.
-- [`CHANGELOG.md`](CHANGELOG.md) : journal des changements importants.
-
-## Travailler à plusieurs
-
-- **Ne jamais commiter de secret** (mot de passe, clé S3, kubeconfig, état OpenTofu). Le `.gitignore` les exclut ; lancez `make check-secrets` avant chaque commit et relisez `git diff --staged`.
-- Une mise à jour se fait avec `git pull` : les fichiers locaux ignorés (secrets, état, clés S3, clone de Garage) sont conservés. **Ne supprimez pas le dossier pour le recréer** : vous perdriez ces fichiers et l'état d'OpenTofu du cluster.
-- Une découverte, un échec, un résultat de test : ouvrez un ticket avec le modèle « Test_decouverte » (date, environnement, commande, sortie **sans secret**, niveau de preuve). On distingue toujours *observé*, *lu dans la documentation ou le code*, *non testé* et *hypothèse*.
-- Modifications : branche puis merge request vers `main`. Mettez à jour le guide (`docs/guide-src/`) et le `CHANGELOG.md` avec le changement.
 
 ## Limites connues
 
@@ -159,7 +98,11 @@ docs/                     guide (DOCX), sources du guide (guide-src/), document 
 - L'assistant n'a ni authentification ni NetworkPolicy ; Open WebUI est prévu pour un seul administrateur.
 - L'agent (`qwen3:8b`) produit parfois une requête PromQL mal formée et peut renoncer ; le test de fumée vérifie qu'un outil est appelé, pas que la réponse est utile.
 - Les variables d'environnement d'Open WebUI ne servent qu'au premier démarrage : les modifier ensuite n'a aucun effet sans supprimer son volume.
-- Rien n'a été mesuré sur la fiabilité des réponses sur un jeu de questions étendu.
+- La fiabilité des réponses n'a pas été mesurée sur un jeu de questions étendu : un à sept essais par scénario, résultats dans le [plan de tests](docs/tests/plan-de-tests.md). Les refus et la santé générale sont corrects dans nos essais ; la description d'un incident, d'un nœud ou d'un service est juste sur l'essentiel mais contient des affirmations fausses ou non vérifiées (conclusions tirées d'un résultat vide, nombres de lignes plafonnés présentés comme totaux, durées mal lues). Détail et corrections proposées : [plan d'amélioration](docs/plan-amelioration.md).
+- L'interface `/v1` de l'assistant n'a pas d'authentification : elle ne doit être joignable que depuis l'hôte d'Open WebUI, jamais depuis Internet.
+- Sur AWS, Open WebUI est servi en HTTP simple (sans chiffrement) sur le port 3000, limité à nos adresses : acceptable pour une preuve de concept, pas pour la production.
+- Les nœuds EKS ont une adresse publique (pas de passerelle NAT, pour limiter le coût) ; l'accès à l'API Kubernetes et à l'interface est limité à nos adresses IP.
+- L'assistant s'adresse à un seul nœud EKS pour joindre Mimir et Loki : si ce nœud est remplacé, l'hôte doit être recréé.
 
 ## Licence
 
