@@ -155,4 +155,4 @@ Requête de la capture 07, telle que listée sous la réponse :
 promql_instant(query=topk(1, sum by (pod) (container_memory_working_set_bytes{namespace=~"default|grafana|kube-system|loki|mimir|monitoring|test-incident", container!="", cluster="g13-p5-eks"})))
 ```
 
-**Reste à produire** : sortie de `make aws-down` puis de `make aws-audit` (étape 8, numéro de compte masqué). Le schéma d'architecture (étape 2) est `docs/architecture/deploiement-aws-v3.png`.
+**Étape 8 réalisée le 30.10** : destruction par `make aws-down` (4 releases Helm et 72 ressources, sans erreur) puis `make aws-audit` (« rien trouvé »), détail et extrait de l'audit dans [`../tests/resultats/2026-10-30-aws-down-audit.md`](../tests/resultats/2026-10-30-aws-down-audit.md). Ces opérations n'ont pas été filmées ; il n'y a donc pas de capture de la destruction. Le schéma d'architecture (étape 2) est `docs/architecture/deploiement-aws-v3.png`.
