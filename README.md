@@ -22,7 +22,7 @@ qu'il a utilisées, pour que la réponse puisse être vérifiée.
 | 2. Environnement d'observabilité | [local](docs/deploiement-local.md) ; [AWS](docs/deploiement-aws.md) ; code dans `envs/`, `modules/`, `scripts/` | **Local : fait**, exécuté de bout en bout (test de fumée 6 sur 6). **AWS : déployé le 27 octobre** (EKS, Mimir, Loki, Alloy, Grafana, S3) ; Mimir et Loki écrivent bien dans S3 (relevé du 28.10 : 37 objets côté Mimir, 468 côté Loki) |
 | 3. Assistant IA | [`assistant/`](assistant/) | **Fait**, version 0.5.12 en service sur l'hôte AWS (Docker Compose, Open WebUI + assistant, Amazon Bedrock). Défauts connus : voir le [plan d'amélioration](docs/plan-amelioration.md) |
 | 4. Rapport de tests | [`docs/tests/plan-de-tests.md`](docs/tests/plan-de-tests.md), [résultats](docs/tests/resultats/) | **Fait, avec réserves** : 15 scénarios (cas d'usage F1 à F5, refus S1 à S7, pannes R1 à R3) exécutés sur AWS les 27 et 28 octobre, résultats et défauts dans le plan. R3 a été remplacé par une variante (mauvais identifiant de modèle). Peu d'essais par scénario |
-| 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) (déroulé écrit, 9 captures du 28.10) ; [`docs/demo/script-video.md`](docs/demo/script-video.md) (script de la vidéo demandée par le professeur) | Captures **faites**. Vidéo **faite** (enregistrée le 29.10, 9 min 09 s, en français ; lien dans le rapport de 2 pages `docs/rapport/Report-Group13-en.docx`) |
+| 5. Démonstration | [`docs/demo/deroule-demonstration.md`](docs/demo/deroule-demonstration.md) (déroulé écrit, 9 captures du 28.10) ; [`docs/demo/script-video.md`](docs/demo/script-video.md) (script de la vidéo demandée par le professeur) | Captures **faites**. Vidéo **faite** (enregistrée le 29.10, 9 min 09 s, en français ; lien : [vidéo sur Switch Drive](https://drive.switch.ch/index.php/s/SjsMTYzJge9NKPA), aussi dans le rapport de 2 pages `docs/rapport/Report-Group13-en.docx`) |
 
 **AWS.** Les 23 et 24 octobre, l'infrastructure a été créée et détruite par script, puis les droits AWS de l'étudiant ont été
 retirés le 24 octobre à 15h17. Selon l'assistant du cours (message du 26 octobre), il s'agit d'une suppression accidentelle de
@@ -70,7 +70,7 @@ appelés et leurs arguments sont listés sous la réponse (« Outils appelés »
 
 ## Branches du dépôt
 
-Le groupe a travaillé sur plusieurs branches. La branche principale (`main`) reçoit le travail de `dev/nicolas`, qui contient la pile d'observabilité, l'assistant, le déploiement AWS, les tests, les documents et le rapport. Les autres branches n'ont **pas** été fusionnées : le choix a été fait pour éviter de résoudre des conflits à la fin du projet, et il peut être revu si le groupe le souhaite. Pour voir la contribution des autres membres, il faut consulter ces branches :
+Le groupe a travaillé sur plusieurs branches. La branche principale (`main`) reçoit le travail de `dev/nicolas`, qui contient la pile d'observabilité, l'assistant, le déploiement AWS, les tests, les documents et le rapport. Les autres branches n'ont **pas** été fusionnées : le choix a été fait pour éviter de résoudre des conflits à la fin du projet, et il peut être revu si le groupe le souhaite. Pour voir la contribution des autres membres, il faut consulter ces branches. Elles se trouvent sur le dépôt d'origine, le GitLab de la HEFR (visibilité interne) ; la copie publique sur GitHub ne contient que `main`.
 
 | Branche | Auteur | Contenu |
 |---|---|---|
