@@ -30,6 +30,9 @@ exists_ec2() { # $1 = type, $2 = identifiant ; 0 = existe ou indéterminé, 1 = 
     route-table)         out="$(aws ec2 describe-route-tables --region "$REGION" --route-table-ids "$2" 2>&1)" ;;
     internet-gateway)    out="$(aws ec2 describe-internet-gateways --region "$REGION" --internet-gateway-ids "$2" 2>&1)" ;;
     volume)              out="$(aws ec2 describe-volumes --region "$REGION" --volume-ids "$2" 2>&1)" ;;
+    # Une instance terminée reste visible dans EC2 environ une heure : elle ne coûte plus rien, l'entrée est périmée.
+    instance)            out="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$2" --query 'Reservations[].Instances[].State.Name' --output text 2>&1)"
+                         [ "$out" = "terminated" ] && return 1 ;;
     *) return 0 ;;
   esac
   printf '%s' "$out" | grep -q 'NotFound' && return 1
